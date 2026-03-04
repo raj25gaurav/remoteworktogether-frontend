@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useStore, type AppState } from '../../store/useStore'
 import { EMOJI_CATEGORIES } from '../../utils/constants'
 import { TAB_TYPE, TENOR_REQUEST_TYPE, EMOJI_CATEGORY, type TabType, type TenorRequestType, type EmojiCategory } from '../../types/enums'
+import { tenorApi, type TenorGif } from '../../services'
 
 interface EmojiPanelProps {
     onSend: (content: string, type: TabType) => void
@@ -9,13 +10,11 @@ interface EmojiPanelProps {
     tenorKey?: string
 }
 
-const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPzpG6wFwKcJONaA' // Free public demo key
-
 export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
     const [tab, setTab] = useState<TabType>(TAB_TYPE.EMOJI)
     const [emojiCategory, setEmojiCategory] = useState<EmojiCategory>(EMOJI_CATEGORY.QUICK)
     const [gifSearch, setGifSearch] = useState('')
-    const [gifs, setGifs] = useState<any[]>([])
+    const [gifs, setGifs] = useState<TenorGif[]>([])
     const [loadingGifs, setLoadingGifs] = useState(false)
     const [gifError, setGifError] = useState('')
 
@@ -32,18 +31,16 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
         setLoadingGifs(true)
         setGifError('')
         try {
-            const url = type === TENOR_REQUEST_TYPE.TRENDING
-                ? `https://tenor.googleapis.com/v2/featured?key=${TENOR_KEY}&limit=12&media_filter=gif`
-                : `https://tenor.googleapis.com/v2/search?key=${TENOR_KEY}&q=${encodeURIComponent(query)}&limit=12&media_filter=gif`
-            const res = await fetch(url)
-            const data = await res.json()
-            if (data.results) {
-                setGifs(data.results)
-            } else {
+            const results = type === TENOR_REQUEST_TYPE.TRENDING
+                ? await tenorApi.getTrending(12)
+                : await tenorApi.search(query, 12)
+            
+            setGifs(results)
+            if (results.length === 0) {
                 setGifError('No GIFs found. Try another search!')
             }
-        } catch {
-            setGifError('Could not load GIFs. Check your connection.')
+        } catch (error) {
+            setGifError(error instanceof Error ? error.message : 'Could not load GIFs. Check your connection.')
         } finally {
             setLoadingGifs(false)
         }

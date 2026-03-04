@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useStore, type AppState } from '../../store/useStore'
-import { AVATAR_MAP, API_URL } from '../../utils/constants'
+import { AVATAR_MAP } from '../../utils/constants'
 import { AVATAR_KEY, type AvatarKey } from '../../types/enums'
+import { userApi } from '../../services'
 
 const AVATARS = Object.entries(AVATAR_MAP)
 
@@ -20,17 +21,14 @@ export default function Landing() {
         setLoading(true)
         setError('')
         try {
-            const res = await fetch(
-                `${API_URL}/api/join?username=${encodeURIComponent(username.trim())}&avatar=${selectedAvatar}`
-            )
-            const data = await res.json()
+            const data = await userApi.join(username.trim(), selectedAvatar)
             if (data.user) {
                 setMyUser(data.user)
             } else {
                 setError('Failed to join. Try again.')
             }
         } catch (e) {
-            setError('Cannot connect to server. Is the backend running?')
+            setError(e instanceof Error ? e.message : 'Cannot connect to server. Is the backend running?')
         } finally {
             setLoading(false)
         }

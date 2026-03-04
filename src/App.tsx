@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { useStore, type AppState, type User, type Room } from './store/useStore'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useWebRTC } from './hooks/useWebRTC'
@@ -6,13 +6,28 @@ import Landing from './components/Landing/Landing'
 import Sidebar from './components/Sidebar/Sidebar'
 import ChatPanel from './components/Sidebar/ChatPanel'
 import UserGrid from './components/Lobby/UserCard'
-import VideoGrid from './components/VideoGrid/VideoGrid'
-import EmojiPanel from './components/EmojiPanel/EmojiPanel'
-import AvatarChat from './components/AvatarChat/AvatarChat'
 import ReactionOverlay from './components/ReactionOverlay/ReactionOverlay'
 import { Toaster, toast } from 'react-hot-toast'
 import { AMBIENT_SOUNDS, AVATAR_MAP } from './utils/constants'
 import { VIEW_MODE, MESSAGE_TYPE, ROOM_ID, WS_MESSAGE_TYPE, type ViewMode, type TabType } from './types/enums'
+
+// Lazy load heavy components
+import { EmojiPanel, AvatarChat, VideoGrid } from './components/LazyComponents'
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div style={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    padding: '20px',
+    color: 'var(--text-muted)',
+    fontSize: '13px'
+  }}>
+    <div className="spinner" style={{ marginRight: '8px' }} />
+    Loading...
+  </div>
+)
 
 export default function App() {
   const myUser = useStore((s: AppState) => s.myUser)
@@ -166,10 +181,12 @@ export default function App() {
           zIndex: 200,
           animation: 'slide-in-up 0.2s ease',
         }}>
-          <EmojiPanel
-            onSend={sendReaction}
-            onClose={toggleEmojiPanel}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <EmojiPanel
+              onSend={sendReaction}
+              onClose={toggleEmojiPanel}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -343,15 +360,17 @@ export default function App() {
               {/* Cabin Video Mode */}
               {isInCabin && viewMode === 'video' ? (
                 <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <VideoGrid
-                    localStream={localStream}
-                    remoteStreams={remoteStreams}
-                    myUser={myUser}
-                    roomUsers={roomUsers}
-                    isMuted={isMuted}
-                    isCameraOff={isCameraOff}
-                    onCallUser={callUser}
-                  />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <VideoGrid
+                      localStream={localStream}
+                      remoteStreams={remoteStreams}
+                      myUser={myUser}
+                      roomUsers={roomUsers}
+                      isMuted={isMuted}
+                      isCameraOff={isCameraOff}
+                      onCallUser={callUser}
+                    />
+                  </Suspense>
                 </div>
               ) : (
                 <>
@@ -499,7 +518,9 @@ export default function App() {
 
             {/* AI Avatar Panel */}
             {showAIPanel && (
-              <AvatarChat roomId={currentRoomId} />
+              <Suspense fallback={<LoadingFallback />}>
+                <AvatarChat roomId={currentRoomId} />
+              </Suspense>
             )}
           </div>
         </div>
@@ -525,7 +546,9 @@ export default function App() {
       {showAIPanel && (
         <div className="mobile-drawer">
           <div className="mobile-drawer-handle" onClick={toggleAIPanel} />
-          <AvatarChat roomId={currentRoomId} />
+          <Suspense fallback={<LoadingFallback />}>
+            <AvatarChat roomId={currentRoomId} />
+          </Suspense>
         </div>
       )}
     </div>

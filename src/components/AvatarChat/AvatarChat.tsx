@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStore, type AppState, type User } from '../../store/useStore'
 import { AvatarDisplay } from '../Lobby/UserCard'
-import { API_URL } from '../../utils/constants'
 import { ROLE, AI_EMOTION, type Role, type AIEmotion } from '../../types/enums'
+import { aiApi } from '../../services'
 
 interface AIMessage {
     role: Role
@@ -52,20 +52,17 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
 
         try {
             const history = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }))
-            const res = await fetch(`${API_URL}/api/avatar/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
+            const data = await aiApi.chat({
+                message: text,
+                context: {
                     user_id: myUser?.id ?? 'unknown',
                     username: myUser?.username ?? 'User',
                     room_id: roomId,
                     room_name: room?.name ?? 'the office',
                     room_members: roomMembers,
                     conversation_history: history,
-                }),
+                },
             })
-            const data = await res.json()
             const aiMsg: AIMessage = {
                 role: ROLE.ASSISTANT,
                 content: data.response,
