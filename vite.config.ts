@@ -16,4 +16,23 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom'],
+          'axios-vendor': ['axios'],
+          'animation-vendor': ['framer-motion'],
+          'ui-vendor': ['react-hot-toast', 'zustand'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600, // Increase limit slightly for main chunk
+    sourcemap: false, // Disable sourcemaps in production for smaller build
+  },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'axios', 'zustand', 'framer-motion', 'react-hot-toast'],
+  },
 })

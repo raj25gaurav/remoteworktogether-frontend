@@ -77,7 +77,7 @@ function VideoTile({
     )
 }
 
-export default function VideoGrid({
+function VideoGrid({
     localStream,
     remoteStreams,
     myUser,
@@ -120,3 +120,5 @@ export default function VideoGrid({
         </div>
     )
 }
+
+export default VideoGrid
