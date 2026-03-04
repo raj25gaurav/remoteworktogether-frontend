@@ -4,6 +4,8 @@ import { useStore, Room } from '../../store/useStore'
 interface SidebarProps {
     send: (type: string, payload: any) => void
     currentRoomId: string
+    isOpen?: boolean
+    onClose?: () => void
 }
 
 const ROOM_EMOJIS = ['🚪', '🏠', '🎮', '☕', '🎸', '🎨', '💻', '🏋️', '🎯', '🌟']
@@ -111,7 +113,7 @@ function CreateCabinModal({
     )
 }
 
-export default function Sidebar({ send, currentRoomId }: SidebarProps) {
+export default function Sidebar({ send, currentRoomId, isOpen, onClose }: SidebarProps) {
     const rooms = useStore((s) => s.rooms)
     const users = useStore((s) => s.users)
     const myUser = useStore((s) => s.myUser)
@@ -151,7 +153,7 @@ export default function Sidebar({ send, currentRoomId }: SidebarProps) {
 
     return (
         <>
-            <div className="sidebar">
+            <div className={`sidebar${isOpen ? ' open' : ''}`}>
                 {/* Logo */}
                 <div className="sidebar-logo">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
