@@ -1,15 +1,16 @@
 import React, { useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState } from '../../store/useStore'
 import { AVATAR_MAP, API_URL } from '../../utils/constants'
+import { AVATAR_KEY, type AvatarKey } from '../../types/enums'
 
 const AVATARS = Object.entries(AVATAR_MAP)
 
 export default function Landing() {
     const [username, setUsername] = useState('')
-    const [selectedAvatar, setSelectedAvatar] = useState('astronaut')
+    const [selectedAvatar, setSelectedAvatar] = useState<AvatarKey>(AVATAR_KEY.ASTRONAUT)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const setMyUser = useStore((s) => s.setMyUser)
+    const setMyUser = useStore((s: AppState) => s.setMyUser)
 
     const handleJoin = async () => {
         if (!username.trim()) {
@@ -98,7 +99,7 @@ export default function Landing() {
                             <div
                                 key={key}
                                 className={`avatar-option ${selectedAvatar === key ? 'selected' : ''}`}
-                                onClick={() => setSelectedAvatar(key)}
+                                onClick={() => setSelectedAvatar(key as AvatarKey)}
                             >
                                 <span className="emoji">{emoji}</span>
                                 <span className="label">{key}</span>

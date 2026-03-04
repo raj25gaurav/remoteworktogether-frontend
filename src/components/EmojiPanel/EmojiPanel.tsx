@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState } from '../../store/useStore'
 import { EMOJI_CATEGORIES } from '../../utils/constants'
+import { TAB_TYPE, TENOR_REQUEST_TYPE, EMOJI_CATEGORY, type TabType, type TenorRequestType, type EmojiCategory } from '../../types/enums'
 
 interface EmojiPanelProps {
-    onSend: (content: string, type: 'emoji' | 'gif') => void
+    onSend: (content: string, type: TabType) => void
     onClose: () => void
     tenorKey?: string
 }
@@ -11,8 +12,8 @@ interface EmojiPanelProps {
 const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPzpG6wFwKcJONaA' // Free public demo key
 
 export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
-    const [tab, setTab] = useState<'emoji' | 'gif'>('emoji')
-    const [emojiCategory, setEmojiCategory] = useState('Quick')
+    const [tab, setTab] = useState<TabType>(TAB_TYPE.EMOJI)
+    const [emojiCategory, setEmojiCategory] = useState<EmojiCategory>(EMOJI_CATEGORY.QUICK)
     const [gifSearch, setGifSearch] = useState('')
     const [gifs, setGifs] = useState<any[]>([])
     const [loadingGifs, setLoadingGifs] = useState(false)
@@ -21,17 +22,17 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
     const searchGifs = async (query: string) => {
         if (!query.trim()) {
             // Load trending GIFs
-            fetchGifs('trending', '')
+            fetchGifs(TENOR_REQUEST_TYPE.TRENDING, '')
             return
         }
-        fetchGifs('search', query)
+        fetchGifs(TENOR_REQUEST_TYPE.SEARCH, query)
     }
 
-    const fetchGifs = async (type: 'trending' | 'search', query: string) => {
+    const fetchGifs = async (type: TenorRequestType, query: string) => {
         setLoadingGifs(true)
         setGifError('')
         try {
-            const url = type === 'trending'
+            const url = type === TENOR_REQUEST_TYPE.TRENDING
                 ? `https://tenor.googleapis.com/v2/featured?key=${TENOR_KEY}&limit=12&media_filter=gif`
                 : `https://tenor.googleapis.com/v2/search?key=${TENOR_KEY}&q=${encodeURIComponent(query)}&limit=12&media_filter=gif`
             const res = await fetch(url)
@@ -49,10 +50,10 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
     }
 
     // Load trending on GIF tab open
-    const handleTabChange = (newTab: 'emoji' | 'gif') => {
+    const handleTabChange = (newTab: TabType) => {
         setTab(newTab)
-        if (newTab === 'gif' && gifs.length === 0) {
-            fetchGifs('trending', '')
+        if (newTab === TAB_TYPE.GIF && gifs.length === 0) {
+            fetchGifs(TENOR_REQUEST_TYPE.TRENDING, '')
         }
     }
 
@@ -61,16 +62,16 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
             {/* Header */}
             <div className="emoji-panel-header">
                 <button
-                    className={`btn btn-sm ${tab === 'emoji' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn btn-sm ${tab === TAB_TYPE.EMOJI ? 'btn-primary' : 'btn-ghost'}`}
                     style={{ flex: 1 }}
-                    onClick={() => handleTabChange('emoji')}
+                    onClick={() => handleTabChange(TAB_TYPE.EMOJI)}
                 >
                     😄 Emojis
                 </button>
                 <button
-                    className={`btn btn-sm ${tab === 'gif' ? 'btn-primary' : 'btn-ghost'}`}
+                    className={`btn btn-sm ${tab === TAB_TYPE.GIF ? 'btn-primary' : 'btn-ghost'}`}
                     style={{ flex: 1 }}
-                    onClick={() => handleTabChange('gif')}
+                    onClick={() => handleTabChange(TAB_TYPE.GIF)}
                 >
                     🎬 GIFs
                 </button>
@@ -79,7 +80,7 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
                 </button>
             </div>
 
-            {tab === 'emoji' ? (
+            {tab === TAB_TYPE.EMOJI ? (
                 <>
                     {/* Emoji categories */}
                     <div className="emoji-tabs">
@@ -87,7 +88,7 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
                             <button
                                 key={cat}
                                 className={`emoji-tab ${emojiCategory === cat ? 'active' : ''}`}
-                                onClick={() => setEmojiCategory(cat)}
+                                onClick={() => setEmojiCategory(cat as EmojiCategory)}
                             >
                                 {cat}
                             </button>
@@ -98,7 +99,7 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
                             <button
                                 key={emoji}
                                 className="emoji-btn"
-                                onClick={() => { onSend(emoji, 'emoji'); onClose() }}
+                                onClick={() => { onSend(emoji, TAB_TYPE.EMOJI); onClose() }}
                                 title={emoji}
                             >
                                 {emoji}
@@ -144,7 +145,7 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
                                     <div
                                         key={gif.id}
                                         className="gif-item"
-                                        onClick={() => { onSend(url, 'gif'); onClose() }}
+                                        onClick={() => { onSend(url, TAB_TYPE.GIF); onClose() }}
                                     >
                                         <img src={preview} alt={gif.content_description || 'GIF'} loading="lazy" />
                                     </div>

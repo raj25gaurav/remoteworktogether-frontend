@@ -108,6 +108,8 @@ interface AppState {
     setAmbientSound: (sound: string | null) => void
 }
 
+export type { AppState }
+
 export const useStore = create<AppState>((set, get) => ({
     myUser: null,
     setMyUser: (user) => set({ myUser: user }),

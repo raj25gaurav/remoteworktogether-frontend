@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState } from '../../store/useStore'
 import type { Reaction } from '../../store/useStore'
+import { MESSAGE_TYPE, SIZE, type Size } from '../../types/enums'
 
 export default function ReactionOverlay() {
-    const reactions = useStore((s) => s.reactions)
-    const currentRoomId = useStore((s) => s.currentRoomId)
+    const reactions = useStore((s: AppState) => s.reactions)
+    const currentRoomId = useStore((s: AppState) => s.currentRoomId)
 
     // Memoize the filter to avoid new array reference every render
     const visible = useMemo(
@@ -22,10 +23,16 @@ export default function ReactionOverlay() {
 }
 
 function ReactionParticle({ reaction }: { reaction: Reaction }) {
-    const sizeMap = { sm: '1.8rem', md: '2.5rem', lg: '3.5rem' }
-    const size = sizeMap[reaction.size as keyof typeof sizeMap] || '2.5rem'
+    const sizeMap: Record<Size, string> = { 
+        [SIZE.XS]: '1.2rem',
+        [SIZE.SM]: '1.8rem', 
+        [SIZE.MD]: '2.5rem', 
+        [SIZE.LG]: '3.5rem',
+        [SIZE.XL]: '4.5rem',
+    }
+    const size = sizeMap[reaction.size as Size] || sizeMap[SIZE.MD]
 
-    const content = reaction.type === 'gif' ? (
+    const content = reaction.type === MESSAGE_TYPE.GIF ? (
         <img
             src={reaction.content}
             alt="gif reaction"
@@ -45,7 +52,7 @@ function ReactionParticle({ reaction }: { reaction: Reaction }) {
             style={{
                 left: `${reaction.x}%`,
                 top: `${reaction.y}%`,
-                animationDuration: reaction.type === 'gif' ? '4s' : '3s',
+                animationDuration: reaction.type === MESSAGE_TYPE.GIF ? '4s' : '3s',
             }}
             title={`${reaction.username} reacted`}
         >

@@ -1,42 +1,43 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState, type User } from '../../store/useStore'
 import { AvatarDisplay } from '../Lobby/UserCard'
 import { API_URL } from '../../utils/constants'
+import { ROLE, AI_EMOTION, type Role, type AIEmotion } from '../../types/enums'
 
 interface AIMessage {
-    role: 'user' | 'assistant'
+    role: Role
     content: string
-    emotion?: string
+    emotion?: AIEmotion
 }
 
-const ARIA_EMOTIONS: Record<string, string> = {
-    happy: '🤗',
-    laughing: '😂',
-    excited: '🤩',
-    thinking: '🤔',
-    empathetic: '🥺',
-    confused: '😵',
-    cool: '😎',
+const ARIA_EMOTIONS: Record<AIEmotion, string> = {
+    [AI_EMOTION.HAPPY]: '🤗',
+    [AI_EMOTION.LAUGHING]: '😂',
+    [AI_EMOTION.EXCITED]: '🤩',
+    [AI_EMOTION.THINKING]: '🤔',
+    [AI_EMOTION.EMPATHETIC]: '🥺',
+    [AI_EMOTION.CONFUSED]: '😵',
+    [AI_EMOTION.COOL]: '😎',
 }
 
 export default function AvatarChat({ roomId }: { roomId: string }) {
     const [messages, setMessages] = useState<AIMessage[]>([
-        { role: 'assistant', content: "Hey there! 👋 I'm Aria, your virtual office companion! I'm here to make your remote work day brighter. Ask me anything or just say hi! 🌟", emotion: 'happy' },
+        { role: ROLE.ASSISTANT, content: "Hey there! 👋 I'm Aria, your virtual office companion! I'm here to make your remote work day brighter. Ask me anything or just say hi! 🌟", emotion: AI_EMOTION.HAPPY },
     ])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
-    const [currentEmotion, setCurrentEmotion] = useState('happy')
+    const [currentEmotion, setCurrentEmotion] = useState<AIEmotion>(AI_EMOTION.HAPPY)
     const [suggestions, setSuggestions] = useState(['Tell me a joke 🎭', 'Team check-in 👥', 'Work tip 💡'])
     const chatEndRef = useRef<HTMLDivElement>(null)
 
-    const myUser = useStore((s) => s.myUser)
-    const users = useStore((s) => s.users)
-    const rooms = useStore((s) => s.rooms)
+    const myUser = useStore((s: AppState) => s.myUser)
+    const users = useStore((s: AppState) => s.users)
+    const rooms = useStore((s: AppState) => s.rooms)
 
     const room = rooms[roomId]
     const roomMembers = Object.values(users)
-        .filter((u) => u.room_id === roomId)
-        .map((u) => u.username)
+        .filter((u: User) => u.room_id === roomId)
+        .map((u: User) => u.username)
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,7 +45,7 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
 
     const sendMessage = async (text: string) => {
         if (!text.trim() || loading) return
-        const userMsg: AIMessage = { role: 'user', content: text }
+        const userMsg: AIMessage = { role: ROLE.USER, content: text }
         setMessages((prev) => [...prev, userMsg])
         setInput('')
         setLoading(true)
@@ -66,18 +67,18 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
             })
             const data = await res.json()
             const aiMsg: AIMessage = {
-                role: 'assistant',
+                role: ROLE.ASSISTANT,
                 content: data.response,
-                emotion: data.emotion,
+                emotion: data.emotion as AIEmotion,
             }
             setMessages((prev) => [...prev, aiMsg])
-            setCurrentEmotion(data.emotion || 'happy')
+            setCurrentEmotion((data.emotion as AIEmotion) || AI_EMOTION.HAPPY)
             if (data.suggestions?.length) setSuggestions(data.suggestions)
         } catch (e) {
             setMessages((prev) => [...prev, {
-                role: 'assistant',
+                role: ROLE.ASSISTANT,
                 content: "Oops! I lost my connection for a sec 🌐 Try again?",
-                emotion: 'confused',
+                emotion: AI_EMOTION.CONFUSED,
             }])
         } finally {
             setLoading(false)
@@ -89,7 +90,7 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
             {/* Aria Avatar Header */}
             <div className="ai-avatar-display">
                 <div className="ai-avatar-emoji">
-                    {ARIA_EMOTIONS[currentEmotion] || '🤗'}
+                    {ARIA_EMOTIONS[currentEmotion as AIEmotion] || ARIA_EMOTIONS[AI_EMOTION.HAPPY]}
                 </div>
                 <div className="ai-avatar-name">Aria</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -114,12 +115,12 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
                 {messages.map((msg, i) => (
                     <div
                         key={i}
-                        className={msg.role === 'assistant' ? 'ai-message' : 'user-message'}
-                        style={{ maxWidth: '90%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}
+                        className={msg.role === ROLE.ASSISTANT ? 'ai-message' : 'user-message'}
+                        style={{ maxWidth: '90%', alignSelf: msg.role === ROLE.USER ? 'flex-end' : 'flex-start' }}
                     >
-                        {msg.role === 'assistant' && (
+                        {msg.role === ROLE.ASSISTANT && (
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
-                                Aria {ARIA_EMOTIONS[msg.emotion || 'happy']}
+                                Aria {ARIA_EMOTIONS[(msg.emotion as AIEmotion) || AI_EMOTION.HAPPY]}
                             </div>
                         )}
                         {msg.content}

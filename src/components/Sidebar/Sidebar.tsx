@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { useStore, Room } from '../../store/useStore'
+import { useStore, Room, type AppState } from '../../store/useStore'
+import { USER_STATUS, USER_STATUS_CONFIG, WS_MESSAGE_TYPE, type UserStatus } from '../../types/enums'
 
 interface SidebarProps {
     send: (type: string, payload: any) => void
@@ -114,9 +115,9 @@ function CreateCabinModal({
 }
 
 export default function Sidebar({ send, currentRoomId, isOpen, onClose }: SidebarProps) {
-    const rooms = useStore((s) => s.rooms)
-    const users = useStore((s) => s.users)
-    const myUser = useStore((s) => s.myUser)
+    const rooms = useStore((s: AppState) => s.rooms)
+    const users = useStore((s: AppState) => s.users)
+    const myUser = useStore((s: AppState) => s.myUser)
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [statusOpen, setStatusOpen] = useState(false)
 
@@ -125,30 +126,30 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
 
     const joinRoom = (roomId: string) => {
         if (roomId === currentRoomId) return
-        send('room_join', { room_id: roomId })
+        send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: roomId })
     }
 
     const createRoom = (name: string, emoji: string, desc: string, isPrivate: boolean) => {
-        send('room_create', { name, emoji, description: desc, is_private: isPrivate })
+        send(WS_MESSAGE_TYPE.ROOM_CREATE, { name, emoji, description: desc, is_private: isPrivate })
         // Auto-join created room
         setTimeout(() => {
             const newRoom = Object.values(useStore.getState().rooms).find(
                 (r) => r.name === name && r.created_by === myUser?.id
             )
-            if (newRoom) send('room_join', { room_id: newRoom.id })
+            if (newRoom) send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: newRoom.id })
         }, 500)
     }
 
     const setStatus = (status: string) => {
-        send('status_update', { status })
+        send(WS_MESSAGE_TYPE.STATUS_UPDATE, { status })
         setStatusOpen(false)
     }
 
-    const STATUSES = [
-        { key: 'online', label: '🟢 Online', color: '#10b981' },
-        { key: 'busy', label: '🟡 Busy', color: '#f59e0b' },
-        { key: 'away', label: '⚪ Away', color: '#94a3b8' },
-        { key: 'focus', label: '🟣 Focus Mode', color: '#a855f7' },
+    const STATUSES: Array<{ key: UserStatus; label: string; color: string }> = [
+        { key: USER_STATUS.ONLINE, label: USER_STATUS_CONFIG[USER_STATUS.ONLINE].label, color: USER_STATUS_CONFIG[USER_STATUS.ONLINE].color },
+        { key: USER_STATUS.BUSY, label: USER_STATUS_CONFIG[USER_STATUS.BUSY].label, color: USER_STATUS_CONFIG[USER_STATUS.BUSY].color },
+        { key: USER_STATUS.AWAY, label: USER_STATUS_CONFIG[USER_STATUS.AWAY].label, color: USER_STATUS_CONFIG[USER_STATUS.AWAY].color },
+        { key: USER_STATUS.FOCUS, label: USER_STATUS_CONFIG[USER_STATUS.FOCUS].label, color: USER_STATUS_CONFIG[USER_STATUS.FOCUS].color },
     ]
 
     return (
@@ -258,7 +259,7 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
                                     {myUser?.username || 'You'}
                                 </div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    {myUser?.status || 'online'} • Click to change
+                                    {myUser?.status || USER_STATUS.ONLINE} • Click to change
                                 </div>
                             </div>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▾</span>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { STUN_SERVERS } from '../utils/constants'
+import { WS_MESSAGE_TYPE } from '../types/enums'
 
 interface PeerConnection {
     pc: RTCPeerConnection
@@ -41,7 +42,7 @@ export function useWebRTC(
 
         pc.onicecandidate = (event) => {
             if (event.candidate) {
-                send('webrtc_ice', { target_id: targetId, candidate: event.candidate })
+                send(WS_MESSAGE_TYPE.WEBRTC_ICE, { target_id: targetId, candidate: event.candidate })
             }
         }
 
@@ -76,7 +77,7 @@ export function useWebRTC(
         const pc = createPeerConnection(targetId)
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
-        send('webrtc_offer', { target_id: targetId, sdp: offer })
+        send(WS_MESSAGE_TYPE.WEBRTC_OFFER, { target_id: targetId, sdp: offer })
     }, [createPeerConnection, send])
 
     // Listen for WebRTC signaling messages
@@ -85,16 +86,16 @@ export function useWebRTC(
             const msg = (event as CustomEvent).detail
             const { type, payload, sender_id } = msg
 
-            if (type === 'webrtc_offer') {
+            if (type === WS_MESSAGE_TYPE.WEBRTC_OFFER) {
                 const pc = createPeerConnection(sender_id)
                 await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
-                send('webrtc_answer', { target_id: sender_id, sdp: answer })
-            } else if (type === 'webrtc_answer') {
+                send(WS_MESSAGE_TYPE.WEBRTC_ANSWER, { target_id: sender_id, sdp: answer })
+            } else if (type === WS_MESSAGE_TYPE.WEBRTC_ANSWER) {
                 const peer = peers.current[sender_id]
                 if (peer) await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-            } else if (type === 'webrtc_ice') {
+            } else if (type === WS_MESSAGE_TYPE.WEBRTC_ICE) {
                 const peer = peers.current[sender_id]
                 if (peer && payload.candidate) {
                     await peer.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))

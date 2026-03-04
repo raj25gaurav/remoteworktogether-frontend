@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useStore } from '../store/useStore'
 import { WS_URL } from '../utils/constants'
+import { WS_MESSAGE_TYPE } from '../types/enums'
 
 export function useWebSocket(userId: string | null) {
     const ws = useRef<WebSocket | null>(null)
@@ -22,37 +23,37 @@ export function useWebSocket(userId: string | null) {
         const { type, payload } = msg
 
         switch (type) {
-            case 'user_list':
+            case WS_MESSAGE_TYPE.USER_LIST:
                 if (payload.users) setUsers(payload.users)
                 if (payload.rooms) setRooms(payload.rooms)
                 if (payload.moved_to) setCurrentRoom(payload.moved_to)
                 break
 
-            case 'user_join':
+            case WS_MESSAGE_TYPE.USER_JOIN:
                 if (payload.user) upsertUser(payload.user)
                 break
 
-            case 'user_leave':
+            case WS_MESSAGE_TYPE.USER_LEAVE:
                 if (payload.user_id) removeUser(payload.user_id)
                 break
 
-            case 'chat_message':
+            case WS_MESSAGE_TYPE.CHAT_MESSAGE:
                 addMessage(payload)
                 break
 
-            case 'reaction':
+            case WS_MESSAGE_TYPE.REACTION:
                 addReaction(payload)
                 break
 
-            case 'room_create':
+            case WS_MESSAGE_TYPE.ROOM_CREATE:
                 if (payload.room) upsertRoom(payload.room)
                 break
 
-            case 'room_update':
+            case WS_MESSAGE_TYPE.ROOM_UPDATE:
                 if (payload.rooms) setRooms(payload.rooms)
                 break
 
-            case 'room_join':
+            case WS_MESSAGE_TYPE.ROOM_JOIN:
                 if (payload.user) upsertUser(payload.user)
                 if (payload.room_id) {
                     const myId = useStore.getState().myUser?.id
@@ -60,25 +61,25 @@ export function useWebSocket(userId: string | null) {
                 }
                 break
 
-            case 'room_leave':
+            case WS_MESSAGE_TYPE.ROOM_LEAVE:
                 // Update room member state handled via user_list
                 break
 
-            case 'room_invite':
+            case WS_MESSAGE_TYPE.ROOM_INVITE:
                 setPendingInvite({ room: payload.room, from_user: payload.from_user, from_id: payload.from_id })
                 break
 
-            case 'status_update': {
+            case WS_MESSAGE_TYPE.STATUS_UPDATE: {
                 const user = useStore.getState().users[payload.user_id]
                 if (user) upsertUser({ ...user, status: payload.status })
                 break
             }
 
-            case 'pong':
+            case WS_MESSAGE_TYPE.PONG:
                 // Heartbeat response, all good
                 break
 
-            case 'error':
+            case WS_MESSAGE_TYPE.ERROR:
                 console.error('Server error:', payload.message)
                 break
 
@@ -101,7 +102,7 @@ export function useWebSocket(userId: string | null) {
             // Heartbeat
             const ping = setInterval(() => {
                 if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'ping', payload: {} }))
+                    socket.send(JSON.stringify({ type: WS_MESSAGE_TYPE.PING, payload: {} }))
                 } else {
                     clearInterval(ping)
                 }

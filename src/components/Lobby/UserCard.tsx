@@ -1,4 +1,4 @@
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState } from '../../store/useStore'
 import type { User } from '../../store/useStore'
 import { AVATAR_MAP, STATUS_COLORS } from '../../utils/constants'
 
@@ -33,7 +33,7 @@ export function AvatarDisplay({ user, size = 'md' }: { user: User; size?: 'xs' |
 }
 
 export function UserCard({ user, onInvite, compact }: UserCardProps) {
-    const myUser = useStore((s) => s.myUser)
+    const myUser = useStore((s: AppState) => s.myUser)
     const isMe = myUser?.id === user.id
 
     if (compact) {

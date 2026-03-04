@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore, type AppState } from '../../store/useStore'
 import { AVATAR_MAP } from '../../utils/constants'
 import type { ChatMessage } from '../../store/useStore'
+import { MESSAGE_TYPE, WS_MESSAGE_TYPE } from '../../types/enums'
 
 interface ChatPanelProps {
     send: (type: string, payload: any) => void
@@ -17,10 +18,10 @@ export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProp
     const [input, setInput] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
     // Use stable selector: get the messages map, then derive room messages
-    const allMessages = useStore((s) => s.messages)
+    const allMessages = useStore((s: AppState) => s.messages)
     const messages = useMemo(() => allMessages[roomId] ?? [], [allMessages, roomId])
-    const myUser = useStore((s) => s.myUser)
-    const showChat = useStore((s) => s.showChat)
+    const myUser = useStore((s: AppState) => s.myUser)
+    const showChat = useStore((s: AppState) => s.showChat)
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -29,10 +30,10 @@ export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProp
     const sendMessage = (content?: string) => {
         const text = content || input.trim()
         if (!text) return
-        send('chat_message', {
+        send(WS_MESSAGE_TYPE.CHAT_MESSAGE, {
             content: text,
             room_id: roomId,
-            message_type: 'text',
+            message_type: MESSAGE_TYPE.TEXT,
         })
         setInput('')
     }
@@ -97,7 +98,7 @@ export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProp
 function ChatMsgItem({ msg, isMe }: { msg: ChatMessage; isMe: boolean }) {
     const avatarEmoji = AVATAR_MAP[msg.avatar || ''] || '👤'
 
-    if (msg.message_type === 'gif') {
+    if (msg.message_type === MESSAGE_TYPE.GIF) {
         return (
             <div className="chat-message">
                 <div style={{ fontSize: '1.2rem' }}>{avatarEmoji}</div>

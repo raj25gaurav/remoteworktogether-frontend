@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useStore } from './store/useStore'
+import { useStore, type AppState, type User, type Room } from './store/useStore'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useWebRTC } from './hooks/useWebRTC'
 import Landing from './components/Landing/Landing'
@@ -12,29 +12,30 @@ import AvatarChat from './components/AvatarChat/AvatarChat'
 import ReactionOverlay from './components/ReactionOverlay/ReactionOverlay'
 import { Toaster, toast } from 'react-hot-toast'
 import { AMBIENT_SOUNDS, AVATAR_MAP } from './utils/constants'
+import { VIEW_MODE, MESSAGE_TYPE, ROOM_ID, WS_MESSAGE_TYPE, type ViewMode, type TabType } from './types/enums'
 
 export default function App() {
-  const myUser = useStore((s) => s.myUser)
-  const users = useStore((s) => s.users)
-  const rooms = useStore((s) => s.rooms)
-  const currentRoomId = useStore((s) => s.currentRoomId)
-  const wsConnected = useStore((s) => s.wsConnected)
-  const showEmojiPanel = useStore((s) => s.showEmojiPanel)
-  const showAIPanel = useStore((s) => s.showAIPanel)
-  const showChat = useStore((s) => s.showChat)
-  const isMuted = useStore((s) => s.isMuted)
-  const isCameraOff = useStore((s) => s.isCameraOff)
-  const pendingInvite = useStore((s) => s.pendingInvite)
-  const ambientSound = useStore((s) => s.ambientSound)
-  const toggleEmojiPanel = useStore((s) => s.toggleEmojiPanel)
-  const toggleAIPanel = useStore((s) => s.toggleAIPanel)
-  const toggleChat = useStore((s) => s.toggleChat)
-  const toggleMute = useStore((s) => s.toggleMute)
-  const toggleCamera = useStore((s) => s.toggleCamera)
-  const setPendingInvite = useStore((s) => s.setPendingInvite)
-  const setAmbientSound = useStore((s) => s.setAmbientSound)
+  const myUser = useStore((s: AppState) => s.myUser)
+  const users = useStore((s: AppState) => s.users)
+  const rooms = useStore((s: AppState) => s.rooms)
+  const currentRoomId = useStore((s: AppState) => s.currentRoomId)
+  const wsConnected = useStore((s: AppState) => s.wsConnected)
+  const showEmojiPanel = useStore((s: AppState) => s.showEmojiPanel)
+  const showAIPanel = useStore((s: AppState) => s.showAIPanel)
+  const showChat = useStore((s: AppState) => s.showChat)
+  const isMuted = useStore((s: AppState) => s.isMuted)
+  const isCameraOff = useStore((s: AppState) => s.isCameraOff)
+  const pendingInvite = useStore((s: AppState) => s.pendingInvite)
+  const ambientSound = useStore((s: AppState) => s.ambientSound)
+  const toggleEmojiPanel = useStore((s: AppState) => s.toggleEmojiPanel)
+  const toggleAIPanel = useStore((s: AppState) => s.toggleAIPanel)
+  const toggleChat = useStore((s: AppState) => s.toggleChat)
+  const toggleMute = useStore((s: AppState) => s.toggleMute)
+  const toggleCamera = useStore((s: AppState) => s.toggleCamera)
+  const setPendingInvite = useStore((s: AppState) => s.setPendingInvite)
+  const setAmbientSound = useStore((s: AppState) => s.setAmbientSound)
 
-  const [viewMode, setViewMode] = useState<'lobby' | 'video'>('lobby')
+  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.LOBBY)
   const [isInCabin, setIsInCabin] = useState(false)
   const [showInvitePanel, setShowInvitePanel] = useState(false)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
@@ -58,13 +59,13 @@ export default function App() {
   // Derived data — memoized to avoid new array reference on every render
   const currentRoom = useMemo(() => rooms[currentRoomId], [rooms, currentRoomId])
   const roomUsers = useMemo(
-    () => Object.values(users).filter((u) => u.room_id === currentRoomId),
+    () => Object.values(users).filter((u: User) => u.room_id === currentRoomId),
     [users, currentRoomId]
   )
 
   // Track if in cabin
   useEffect(() => {
-    setIsInCabin(currentRoomId !== 'lobby')
+    setIsInCabin(currentRoomId !== ROOM_ID.LOBBY)
   }, [currentRoomId])
 
   // Handle room change — join video automatically in cabin
@@ -102,8 +103,8 @@ export default function App() {
   }, [ambientSound])
 
   // Send reaction
-  const sendReaction = useCallback((content: string, type: 'emoji' | 'gif') => {
-    send('reaction', {
+  const sendReaction = useCallback((content: string, type: TabType) => {
+    send(WS_MESSAGE_TYPE.REACTION, {
       content,
       reaction_type: type,
       room_id: currentRoomId,
@@ -111,18 +112,18 @@ export default function App() {
       y: Math.random() * 60 + 10,
     })
     // Also send as chat message for GIFs
-    if (type === 'gif') {
-      send('chat_message', {
+    if (type === MESSAGE_TYPE.GIF) {
+      send(WS_MESSAGE_TYPE.CHAT_MESSAGE, {
         content,
         room_id: currentRoomId,
-        message_type: 'gif',
+        message_type: MESSAGE_TYPE.GIF,
       })
     }
   }, [send, currentRoomId])
 
   // Invite user to current room
   const inviteUser = useCallback((targetUserId: string) => {
-    send('room_invite', {
+    send(WS_MESSAGE_TYPE.ROOM_INVITE, {
       target_user_id: targetUserId,
       room_id: currentRoomId,
     })
@@ -132,18 +133,18 @@ export default function App() {
 
   // Lobby users not yet in current cabin — for invite panel
   const lobbyUsersToInvite = useMemo(
-    () => Object.values(users).filter((u) => u.id !== myUser?.id && u.room_id === 'lobby'),
+    () => Object.values(users).filter((u: User) => u.id !== myUser?.id && u.room_id === ROOM_ID.LOBBY),
     [users, myUser]
   )
 
   // Accept invite
   const acceptInvite = useCallback(() => {
     if (pendingInvite) {
-      send('room_join', { room_id: pendingInvite.room.id })
+      send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: pendingInvite.room.id })
       setPendingInvite(null)
       toast.success(`Joined ${pendingInvite.room.name}! 🚀`, { className: 'toast' })
     }
-  }, [pendingInvite, send])
+  }, [pendingInvite, send, setPendingInvite])
 
   if (!myUser) {
     return <Landing />
@@ -239,16 +240,16 @@ export default function App() {
             {isInCabin && (
               <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', borderRadius: 10, padding: '4px' }}>
                 <button
-                  className={`btn btn-sm ${viewMode === 'lobby' ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setViewMode('lobby')}
+                  className={`btn btn-sm ${viewMode === VIEW_MODE.LOBBY ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setViewMode(VIEW_MODE.LOBBY)}
                 >
                   👥 People
                 </button>
                 <button
-                  className={`btn btn-sm ${viewMode === 'video' ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setViewMode('video')}
+                  className={`btn btn-sm ${viewMode === VIEW_MODE.VIDEO ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setViewMode(VIEW_MODE.VIDEO)}
                 >
-                  📹 Video
+                  🎥 Video
                 </button>
               </div>
             )}
@@ -402,7 +403,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {lobbyUsersToInvite.map((u) => (
+                            {lobbyUsersToInvite.map((u: User) => (
                               <div key={u.id} style={{
                                 display: 'flex', alignItems: 'center', gap: '10px',
                                 padding: '10px 14px',
@@ -434,19 +435,19 @@ export default function App() {
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         {Object.values(rooms)
-                          .filter((r) => r.id !== 'lobby')
-                          .map((room) => {
-                            const mem = Object.values(users).filter((u) => u.room_id === room.id)
+                          .filter((r: Room) => r.id !== ROOM_ID.LOBBY)
+                          .map((room: Room) => {
+                            const mem = Object.values(users).filter((u: User) => u.room_id === room.id)
                             return (
                               <div key={room.id} className="card" style={{ minWidth: 180, cursor: 'pointer' }}
-                                onClick={() => send('room_join', { room_id: room.id })}>
+                                onClick={() => send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: room.id })}>
                                 <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>{room.emoji}</div>
                                 <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '3px' }}>{room.name}</div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
                                   {mem.length} {mem.length === 1 ? 'person' : 'people'}
                                   {room.is_private ? ' 🔒' : ''}
                                 </div>
-                                {mem.slice(0, 3).map((u) => (
+                                {mem.slice(0, 3).map((u: User) => (
                                   <span key={u.id} style={{ fontSize: '1rem', marginRight: '2px' }}>
                                     {AVATAR_MAP[u.avatar] || '👤'}
                                   </span>
