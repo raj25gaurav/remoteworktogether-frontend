@@ -14,8 +14,11 @@ export function useWebRTC(
 ) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({})
+    const [isScreenSharing, setIsScreenSharing] = useState(false)
+    const [screenShareStream, setScreenShareStream] = useState<MediaStream | null>(null)
     const peers = useRef<Record<string, PeerConnection>>({})
     const localStreamRef = useRef<MediaStream | null>(null)
+    const screenStreamRef = useRef<MediaStream | null>(null)
 
     const getLocalStream = useCallback(async () => {
         try {
@@ -48,7 +51,26 @@ export function useWebRTC(
 
         pc.ontrack = (event) => {
             const [remoteStream] = event.streams
-            setRemoteStreams((prev) => ({ ...prev, [targetId]: remoteStream }))
+            const track = event.track
+            
+            // Check if this is a screen share track (usually has 'screen' or 'display' in label)
+            const isScreenShare = track.kind === 'video' && (
+                track.label.toLowerCase().includes('screen') ||
+                track.label.toLowerCase().includes('display') ||
+                track.label.toLowerCase().includes('window')
+            )
+            
+            if (isScreenShare) {
+                // Store screen share stream separately
+                const screenStream = new MediaStream([track])
+                setRemoteStreams((prev) => ({ 
+                    ...prev, 
+                    [`${targetId}_screen`]: screenStream 
+                }))
+            } else {
+                // Regular camera/audio stream
+                setRemoteStreams((prev) => ({ ...prev, [targetId]: remoteStream }))
+            }
         }
 
         pc.onconnectionstatechange = () => {
@@ -74,6 +96,18 @@ export function useWebRTC(
     }, [send])
 
     const callUser = useCallback(async (targetId: string) => {
+        // Don't create duplicate connections
+        if (peers.current[targetId]) {
+            console.log(`Already connected to ${targetId}`)
+            return
+        }
+        
+        // Make sure we have a local stream before calling
+        if (!localStreamRef.current) {
+            console.warn('No local stream available, cannot call user')
+            return
+        }
+        
         const pc = createPeerConnection(targetId)
         const offer = await pc.createOffer()
         await pc.setLocalDescription(offer)
@@ -121,20 +155,74 @@ export function useWebRTC(
         localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = !off))
     }, [])
 
+    const stopScreenShare = useCallback(() => {
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach((track) => track.stop())
+            screenStreamRef.current = null
+            setScreenShareStream(null)
+            setIsScreenSharing(false)
+        }
+    }, [])
+
+    const toggleScreenShare = useCallback(async () => {
+        if (isScreenSharing) {
+            stopScreenShare()
+        } else {
+            // Start screen sharing
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: false, // Don't capture system audio, use mic audio
+                })
+                
+                screenStreamRef.current = screenStream
+                setScreenShareStream(screenStream)
+                setIsScreenSharing(true)
+
+                // Add screen share as a new video track to all peer connections
+                // We'll create a separate sender for screen share
+                const screenVideoTrack = screenStream.getVideoTracks()[0]
+                if (screenVideoTrack) {
+                    Object.values(peers.current).forEach(({ pc }) => {
+                        // Add screen share track as additional track
+                        pc.addTrack(screenVideoTrack, screenStream)
+                    })
+                }
+
+                // Handle screen share stop (user clicks stop in browser UI)
+                screenVideoTrack.onended = () => {
+                    stopScreenShare()
+                }
+            } catch (error) {
+                console.error('Failed to start screen sharing:', error)
+            }
+        }
+    }, [isScreenSharing, stopScreenShare])
+
     const closeAllPeers = useCallback(() => {
         Object.values(peers.current).forEach(({ pc }) => pc.close())
         peers.current = {}
         setRemoteStreams({})
     }, [])
 
+    // Cleanup screen stream on unmount
+    useEffect(() => {
+        return () => {
+            screenStreamRef.current?.getTracks().forEach((track) => track.stop())
+        }
+    }, [])
+
     return {
         localStream,
         remoteStreams,
+        isScreenSharing,
+        screenShareStream,
         getLocalStream,
         callUser,
         stopLocalStream,
         closeAllPeers,
         toggleMute,
         toggleCamera,
+        toggleScreenShare,
     }
 }

@@ -56,12 +56,15 @@ export default function App() {
   const {
     localStream,
     remoteStreams,
+    isScreenSharing,
+    screenShareStream,
     getLocalStream,
     callUser,
     stopLocalStream,
     closeAllPeers,
     toggleMute: rtcToggleMute,
     toggleCamera: rtcToggleCamera,
+    toggleScreenShare,
   } = useWebRTC(myUser?.id ?? null, currentRoomId, send)
 
   // Derived data — memoized to avoid new array reference on every render
@@ -76,16 +79,44 @@ export default function App() {
     setIsInCabin(currentRoomId !== ROOM_ID.LOBBY)
   }, [currentRoomId])
 
-  // Handle room change — join video automatically in cabin
+  // Handle video mode — start/stop video stream and call users
   useEffect(() => {
-    if (isInCabin && !localStream) {
-      getLocalStream()
+    if (viewMode === VIEW_MODE.VIDEO && !localStream) {
+      getLocalStream().then((stream) => {
+        if (stream) {
+          // After local stream is ready, call all other users in the room
+          setTimeout(() => {
+            roomUsers
+              .filter((u) => u.id !== myUser?.id)
+              .forEach((user) => {
+                callUser(user.id)
+              })
+          }, 1000) // Give time for stream to be fully set up
+        }
+      })
     }
-    if (!isInCabin) {
+    if (viewMode !== VIEW_MODE.VIDEO) {
       stopLocalStream()
       closeAllPeers()
     }
-  }, [isInCabin])
+  }, [viewMode, localStream, getLocalStream, stopLocalStream, closeAllPeers, callUser, roomUsers, myUser?.id])
+
+  // Call new users when they join the room while in video mode
+  useEffect(() => {
+    if (viewMode === VIEW_MODE.VIDEO && localStream) {
+      const usersToCall = roomUsers.filter(
+        (u) => u.id !== myUser?.id && !remoteStreams[u.id]
+      )
+      
+      if (usersToCall.length > 0) {
+        setTimeout(() => {
+          usersToCall.forEach((user) => {
+            callUser(user.id)
+          })
+        }, 500)
+      }
+    }
+  }, [roomUsers.length, viewMode, localStream, remoteStreams, callUser, myUser?.id])
 
   // Sync WebRTC mute/camera
   useEffect(() => { rtcToggleMute(isMuted) }, [isMuted])
@@ -242,32 +273,30 @@ export default function App() {
             </div>
 
             {/* View toggle */}
-            {isInCabin && (
-              <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setViewMode(VIEW_MODE.LOBBY)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
-                    viewMode === VIEW_MODE.LOBBY
-                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  👥 People
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode(VIEW_MODE.VIDEO)}
-                  className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
-                    viewMode === VIEW_MODE.VIDEO
-                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  🎥 Video
-                </button>
-              </div>
-            )}
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode(VIEW_MODE.LOBBY)}
+                className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === VIEW_MODE.LOBBY
+                    ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                👥 People
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode(VIEW_MODE.VIDEO)}
+                className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === VIEW_MODE.VIDEO
+                    ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                🎥 Video
+              </button>
+            </div>
 
             {/* Controls */}
             <div className="flex gap-2 items-center">
@@ -322,6 +351,22 @@ export default function App() {
               >
                 😄
               </button>
+
+              {/* Screen Share */}
+              {viewMode === VIEW_MODE.VIDEO && (
+                <button
+                  type="button"
+                  onClick={toggleScreenShare}
+                  title={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                    isScreenSharing
+                      ? 'bg-blue-500 text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {isScreenSharing ? '🛑' : '🖥️'}
+                </button>
+              )}
 
               {/* Ambient sound */}
               <button
@@ -384,9 +429,9 @@ export default function App() {
           {/* Content Row */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Main Area */}
-            <main className={`flex-1 overflow-y-auto overflow-x-hidden ${isInCabin && viewMode === 'video' ? 'p-4' : 'p-6'}`}>
-              {/* Cabin Video Mode */}
-              {isInCabin && viewMode === 'video' ? (
+            <main className={`flex-1 overflow-y-auto overflow-x-hidden ${viewMode === 'video' ? 'p-4' : 'p-6'}`}>
+              {/* Video Mode */}
+              {viewMode === 'video' ? (
                 <div className="h-full min-h-0">
                   <Suspense fallback={<LoadingFallback />}>
                     <VideoGrid
@@ -396,6 +441,8 @@ export default function App() {
                       roomUsers={roomUsers}
                       isMuted={isMuted}
                       isCameraOff={isCameraOff}
+                      isScreenSharing={isScreenSharing}
+                      screenShareStream={screenShareStream}
                       onCallUser={callUser}
                     />
                   </Suspense>

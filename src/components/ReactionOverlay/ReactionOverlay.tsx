@@ -1,77 +1,52 @@
 import { useMemo } from 'react'
 import { useStore, type AppState } from '../../store/useStore'
 import type { Reaction } from '../../store/useStore'
-import { MESSAGE_TYPE, SIZE, type Size } from '../../types/enums'
+import { MESSAGE_TYPE } from '../../types/enums'
 
 export default function ReactionOverlay() {
     const reactions = useStore((s: AppState) => s.reactions)
     const currentRoomId = useStore((s: AppState) => s.currentRoomId)
 
     // Memoize the filter to avoid new array reference every render
-    const visible = useMemo(
+    const roomReactions = useMemo(
         () => reactions.filter((r) => r.room_id === currentRoomId),
         [reactions, currentRoomId]
     )
 
+    if (roomReactions.length === 0) return null
+
     return (
-        <div className="reaction-overlay">
-            {visible.map((reaction) => (
-                <ReactionParticle key={reaction.id} reaction={reaction} />
+        <div className="fixed bottom-6 right-6 z-[150] flex flex-col-reverse gap-2 max-w-xs pointer-events-none">
+            {roomReactions.map((reaction) => (
+                <ReactionCard key={reaction.id} reaction={reaction} />
             ))}
         </div>
     )
 }
 
-function ReactionParticle({ reaction }: { reaction: Reaction }) {
-    const sizeMap: Record<Size, string> = { 
-        [SIZE.XS]: '1.2rem',
-        [SIZE.SM]: '1.8rem', 
-        [SIZE.MD]: '2.5rem', 
-        [SIZE.LG]: '3.5rem',
-        [SIZE.XL]: '4.5rem',
-    }
-    const size = sizeMap[reaction.size as Size] || sizeMap[SIZE.MD]
-
+function ReactionCard({ reaction }: { reaction: Reaction }) {
     const content = reaction.type === MESSAGE_TYPE.GIF ? (
         <img
             src={reaction.content}
             alt="gif reaction"
-            style={{
-                width: '120px',
-                borderRadius: '12px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-            }}
+            className="w-16 h-16 object-cover rounded-lg"
         />
     ) : (
-        <span style={{ fontSize: size }}>{reaction.content}</span>
+        <span className="text-2xl">{reaction.content}</span>
     )
 
     return (
-        <div
-            className={`reaction-particle ${reaction.animation}`}
-            style={{
-                left: `${reaction.x}%`,
-                top: `${reaction.y}%`,
-                animationDuration: reaction.type === MESSAGE_TYPE.GIF ? '4s' : '3s',
-            }}
-            title={`${reaction.username} reacted`}
-        >
-            {content}
-            {/* Username label */}
-            <div style={{
-                position: 'absolute',
-                bottom: '-18px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                fontSize: '10px',
-                color: 'rgba(255,255,255,0.7)',
-                whiteSpace: 'nowrap',
-                background: 'rgba(0,0,0,0.5)',
-                padding: '1px 6px',
-                borderRadius: '999px',
-                pointerEvents: 'none',
-            }}>
-                {reaction.username}
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 animate-[slide-in-right_0.3s_ease] flex items-center gap-3 pointer-events-auto backdrop-blur-sm">
+            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-slate-50 dark:bg-slate-700 rounded-lg">
+                {content}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                    {reaction.username}
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    reacted
+                </div>
             </div>
         </div>
     )

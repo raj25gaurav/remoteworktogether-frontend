@@ -9,6 +9,8 @@ interface VideoGridProps {
     roomUsers: User[]
     isMuted: boolean
     isCameraOff: boolean
+    isScreenSharing?: boolean
+    screenShareStream?: MediaStream | null
     onCallUser: (userId: string) => void
 }
 
@@ -17,11 +19,13 @@ function VideoTile({
     user,
     isMuted,
     isLocal,
+    isScreenSharing,
 }: {
     stream?: MediaStream
     user: User
     isMuted?: boolean
     isLocal?: boolean
+    isScreenSharing?: boolean
 }) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const avatarEmoji = AVATAR_MAP[user.avatar] || '👤'
@@ -32,7 +36,7 @@ function VideoTile({
         }
     }, [stream])
 
-    const hasVideo = stream && !user.is_camera_off
+    const hasVideo = stream && (!user.is_camera_off || (isLocal && isScreenSharing))
 
     return (
         <div className="relative bg-slate-900 dark:bg-slate-950 rounded-lg overflow-hidden border border-slate-700 dark:border-slate-800 group aspect-video">
@@ -43,7 +47,7 @@ function VideoTile({
                     muted={isLocal}
                     playsInline
                     className="w-full h-full object-cover"
-                    style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }}
+                    style={{ transform: isLocal && !isScreenSharing ? 'scaleX(-1)' : 'none' }}
                 />
             ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 p-4">
@@ -61,8 +65,9 @@ function VideoTile({
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
                 <div className="flex items-center gap-1.5 text-white text-xs font-medium">
                     <span>{isLocal ? 'You' : user.username}</span>
+                    {isScreenSharing && <span className="text-[10px]">🖥️</span>}
                     {isMuted && <span className="text-[10px]">🔇</span>}
-                    {user.is_camera_off && <span className="text-[10px]">📵</span>}
+                    {user.is_camera_off && !isScreenSharing && <span className="text-[10px]">📵</span>}
                 </div>
             </div>
 
@@ -81,10 +86,12 @@ function VideoGrid({
     roomUsers,
     isMuted,
     isCameraOff,
+    isScreenSharing,
+    screenShareStream,
     onCallUser,
 }: VideoGridProps) {
     const allUsers = [myUser, ...roomUsers.filter((u) => u.id !== myUser.id)]
-    const totalCount = allUsers.length
+    const totalCount = allUsers.length + (isScreenSharing ? 1 : 0)
 
     // Calculate grid layout based on participant count
     const getGridClass = () => {
@@ -105,6 +112,7 @@ function VideoGrid({
                     user={{ ...myUser, is_muted: isMuted, is_camera_off: isCameraOff }}
                     isMuted={isMuted}
                     isLocal
+                    isScreenSharing={isScreenSharing}
                 />
 
                 {/* Remote streams */}
@@ -112,15 +120,37 @@ function VideoGrid({
                     .filter((u) => u.id !== myUser.id)
                     .map((user) => {
                         const stream = remoteStreams[user.id]
+                        const screenStream = remoteStreams[`${user.id}_screen`]
                         return (
-                            <VideoTile
-                                key={user.id}
-                                stream={stream}
-                                user={user}
-                                isMuted={user.is_muted}
-                            />
+                            <React.Fragment key={user.id}>
+                                <VideoTile
+                                    stream={stream}
+                                    user={user}
+                                    isMuted={user.is_muted}
+                                />
+                                {/* Remote user's screen share */}
+                                {screenStream && (
+                                    <VideoTile
+                                        stream={screenStream}
+                                        user={{ ...user, username: `${user.username} (Presenting)`, is_camera_off: false }}
+                                        isMuted={user.is_muted}
+                                        isScreenSharing={true}
+                                    />
+                                )}
+                            </React.Fragment>
                         )
                     })}
+
+                {/* Your Screen Share Stream (as separate entity) */}
+                {isScreenSharing && screenShareStream && (
+                    <VideoTile
+                        stream={screenShareStream}
+                        user={{ ...myUser, username: `${myUser.username} (Presenting)`, is_camera_off: false }}
+                        isMuted={isMuted}
+                        isLocal={false}
+                        isScreenSharing={true}
+                    />
+                )}
             </div>
         </div>
     )
