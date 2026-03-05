@@ -26,16 +26,16 @@ function CreateCabinModal({
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <h3 className="modal-title">🚪 Create a Private Cabin</h3>
+                <h3 className="modal-title">📅 Book a Meeting Room</h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                            CABIN NAME
+                            ROOM NAME
                         </label>
                         <input
                             className="input"
-                            placeholder="e.g. Design Review, Coffee Break..."
+                            placeholder="e.g. Sprint Planning, 1:1 with Alex..."
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             autoFocus
@@ -44,11 +44,11 @@ function CreateCabinModal({
 
                     <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                            DESCRIPTION (optional)
+                            AGENDA (optional)
                         </label>
                         <input
                             className="input"
-                            placeholder="What's happening in this cabin?"
+                            placeholder="What's the meeting about?"
                             value={desc}
                             onChange={(e) => setDesc(e.target.value)}
                         />
@@ -87,7 +87,7 @@ function CreateCabinModal({
                             style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }}
                         />
                         <label htmlFor="private-toggle" style={{ fontSize: '13px', cursor: 'pointer' }}>
-                            🔒 Private cabin (invite only)
+                            🔒 Private room (invite-only)
                         </label>
                     </div>
 
@@ -105,7 +105,7 @@ function CreateCabinModal({
                                 }
                             }}
                         >
-                            Create Cabin
+                            📅 Book Room
                         </button>
                     </div>
                 </div>
@@ -189,13 +189,13 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
                         color: '#10b981',
                     }}>
                         <div style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%', animation: 'status-dot 2s infinite' }} />
-                        <span>{totalOnline} {totalOnline === 1 ? 'person' : 'people'} online</span>
+                        <span>{totalOnline} {totalOnline === 1 ? 'colleague' : 'colleagues'} clocked in</span>
                     </div>
                 </div>
 
                 {/* Rooms section */}
                 <div className="sidebar-section">
-                    <div className="sidebar-section-title">Spaces</div>
+                    <div className="sidebar-section-title">🏢 Office Spaces</div>
 
                     {roomList.map((room) => {
                         const memberCount = Object.values(users).filter((u) => u.room_id === room.id).length
@@ -231,14 +231,14 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
                         style={{ width: '100%', justifyContent: 'flex-start', gap: '10px', padding: '8px 10px', marginTop: '4px', color: 'var(--text-muted)', fontSize: '13px' }}
                         onClick={() => setShowCreateModal(true)}
                     >
-                        <span style={{ fontSize: '1rem' }}>➕</span>
-                        Create Cabin
+                        <span style={{ fontSize: '1rem' }}>📅</span>
+                        Book a Meeting Room
                     </button>
 
                     <div className="divider" />
 
                     {/* My status */}
-                    <div className="sidebar-section-title">My Status</div>
+                    <div className="sidebar-section-title">🟢 My Status</div>
                     <div style={{ position: 'relative' }}>
                         <button
                             className="room-item"
@@ -253,7 +253,10 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
                                     {myUser?.username || 'You'}
                                 </div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    {myUser?.status || USER_STATUS.ONLINE} • Click to change
+                                    {myUser?.status === 'online' ? '🟢 At My Desk'
+                                        : myUser?.status === 'busy' ? '🔴 In a Meeting'
+                                            : myUser?.status === 'away' ? '🟡 On a Break'
+                                                : '🔵 Deep Focus'} • Click to change
                                 </div>
                             </div>
                             <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▾</span>

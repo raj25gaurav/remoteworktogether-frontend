@@ -1,20 +1,43 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useStore, type AppState } from '../../store/useStore'
 import { AVATAR_MAP, API_URL } from '../../utils/constants'
 import { AVATAR_KEY, type AvatarKey } from '../../types/enums'
 
 const AVATARS = Object.entries(AVATAR_MAP)
 
+// Fun office-themed taglines that cycle
+const TAGLINES = [
+    'Your virtual HQ — where the coffee is always hot ☕',
+    'Async is so last year. Be here now 🏢',
+    'No pants required. Webcam optional 📹',
+    'Your commute just got 100% shorter 🚀',
+    'Skip the elevator small-talk. Just vibe 🎵',
+]
+
 export default function Landing() {
     const [username, setUsername] = useState('')
     const [selectedAvatar, setSelectedAvatar] = useState<AvatarKey>(AVATAR_KEY.ASTRONAUT)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [taglineIdx, setTaglineIdx] = useState(0)
+    const [currentTime, setCurrentTime] = useState(new Date())
     const setMyUser = useStore((s: AppState) => s.setMyUser)
 
-    const handleJoin = async () => {
+    // Live clock
+    useEffect(() => {
+        const id = setInterval(() => setCurrentTime(new Date()), 1000)
+        return () => clearInterval(id)
+    }, [])
+
+    // Cycle taglines
+    useEffect(() => {
+        const id = setInterval(() => setTaglineIdx(i => (i + 1) % TAGLINES.length), 4000)
+        return () => clearInterval(id)
+    }, [])
+
+    const handleClockIn = async () => {
         if (!username.trim()) {
-            setError('Please enter your name!')
+            setError('Please enter your name before clocking in!')
             return
         }
         setLoading(true)
@@ -25,65 +48,89 @@ export default function Landing() {
             )
             const data = await res.json()
             if (data.user) {
+                // Save clock-in time to sessionStorage so App.tsx can show the timer
+                sessionStorage.setItem('clockInTime', Date.now().toString())
                 setMyUser(data.user)
             } else {
-                setError('Failed to join. Try again.')
+                setError('Failed to clock in. Please try again.')
             }
-        } catch (e) {
-            setError('Cannot connect to server. Is the backend running?')
+        } catch {
+            setError('Cannot reach the office server. Is the backend online?')
         } finally {
             setLoading(false)
         }
     }
 
+    const formattedTime = currentTime.toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+    })
+    const formattedDate = currentTime.toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric',
+    })
+
     return (
         <div className="landing">
             <div className="animated-bg" />
-            {/* Floating particles */}
+
+            {/* Floating office-themed particles */}
             <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-                {['🛸', '⭐', '🌙', '✨', '💫', '🚀'].map((emoji, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            position: 'absolute',
-                            top: `${10 + i * 15}%`,
-                            left: `${5 + i * 14}%`,
-                            fontSize: `${1 + (i % 3) * 0.5}rem`,
-                            opacity: 0.15,
-                            animation: `avatar-idle ${3 + i}s ease-in-out infinite`,
-                            animationDelay: `${i * 0.5}s`,
-                        }}
-                    >
-                        {emoji}
-                    </div>
+                {['☕', '💼', '📋', '💻', '📊', '🖊️', '📌', '🗂️'].map((emoji, i) => (
+                    <div key={i} style={{
+                        position: 'absolute',
+                        top: `${8 + i * 12}%`,
+                        left: `${3 + i * 12}%`,
+                        fontSize: `${1 + (i % 3) * 0.4}rem`,
+                        opacity: 0.1,
+                        animation: `avatar-idle ${4 + i}s ease-in-out infinite`,
+                        animationDelay: `${i * 0.6}s`,
+                    }}>{emoji}</div>
                 ))}
             </div>
 
             <div className="landing-card" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="landing-hero">
+                {/* Live Office Clock */}
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: '24px',
+                    padding: '16px',
+                    background: 'rgba(99,102,241,0.06)',
+                    border: '1px solid rgba(99,102,241,0.15)',
+                    borderRadius: '16px',
+                }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        🕐 Office Hours
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 800, letterSpacing: '-1px', color: 'var(--text-primary)' }}>
+                        {formattedTime}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        {formattedDate}
+                    </div>
+                </div>
+
+                <div className="landing-hero" style={{ marginBottom: '20px' }}>
                     <span className="landing-logo">🏢</span>
                     <h1 className="landing-title">
                         <span className="text-gradient">RemoteWork</span>
                         <br />
                         <span style={{ color: 'var(--text-primary)' }}>Together</span>
                     </h1>
-                    <p className="landing-subtitle">
-                        Your virtual office where remote teams stay connected,<br />
-                        collaborate, and have fun — all in one space 🚀
+                    <p className="landing-subtitle" style={{ transition: 'opacity 0.5s', minHeight: '40px' }}>
+                        {TAGLINES[taglineIdx]}
                     </p>
                 </div>
 
-                {/* Username input */}
+                {/* Name input */}
                 <div style={{ marginBottom: '20px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                        Your Display Name
+                        👤 Your Name Badge
                     </label>
                     <input
                         className="input"
                         placeholder="e.g. Alex Johnson"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleClockIn()}
                         maxLength={30}
                         autoFocus
                     />
@@ -92,7 +139,7 @@ export default function Landing() {
                 {/* Avatar selector */}
                 <div style={{ marginBottom: '28px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>
-                        Choose Your Avatar
+                        🪪 Pick Your Work Persona
                     </label>
                     <div className="avatar-selector">
                         {AVATARS.map(([key, emoji]) => (
@@ -122,31 +169,32 @@ export default function Landing() {
                     </div>
                 )}
 
+                {/* CLOCK IN Button */}
                 <button
                     className="btn btn-primary btn-lg"
-                    onClick={handleJoin}
+                    onClick={handleClockIn}
                     disabled={loading}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', fontSize: '16px', letterSpacing: '0.5px' }}
                 >
                     {loading ? (
                         <>
                             <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                            Joining...
+                            Signing you in...
                         </>
                     ) : (
-                        <>🚀 Enter Virtual Office</>
+                        <>🟢 Clock In — Start Your Day</>
                     )}
                 </button>
 
-                {/* Features preview */}
-                <div style={{ marginTop: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {/* Office feature badges */}
+                <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     {[
-                        { icon: '🏠', label: 'Main Lobby' },
-                        { icon: '🚪', label: 'Private Cabins' },
-                        { icon: '🎭', label: 'Emoji Reactions' },
-                        { icon: '🤖', label: 'AI Assistant' },
-                        { icon: '📹', label: 'Video Calls' },
-                        { icon: '🎵', label: 'Ambient Music' },
+                        { icon: '🏢', label: 'Open Floor Plan' },
+                        { icon: '🚪', label: 'Meeting Rooms' },
+                        { icon: '📹', label: 'Face-to-Face Calls' },
+                        { icon: '💬', label: 'Office Chat' },
+                        { icon: '🎉', label: 'Water Cooler' },
+                        { icon: '🤖', label: 'AI Colleague' },
                     ].map((f) => (
                         <div key={f.label} style={{
                             display: 'flex', alignItems: 'center', gap: '8px',
