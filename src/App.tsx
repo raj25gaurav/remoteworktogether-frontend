@@ -10,6 +10,7 @@ import VideoGrid from './components/VideoGrid/VideoGrid'
 import EmojiPanel from './components/EmojiPanel/EmojiPanel'
 import AvatarChat from './components/AvatarChat/AvatarChat'
 import ReactionOverlay from './components/ReactionOverlay/ReactionOverlay'
+import { OfficeTicker, PomodoroWidget, DailyQuote, ProductivityMeter, OfficeVibe } from './components/OfficeWidgets'
 import { Toaster, toast } from 'react-hot-toast'
 import { AMBIENT_SOUNDS, AVATAR_MAP } from './utils/constants'
 import { VIEW_MODE, MESSAGE_TYPE, ROOM_ID, WS_MESSAGE_TYPE, type ViewMode, type TabType } from './types/enums'
@@ -104,6 +105,7 @@ export default function App() {
   const [videoEnabled, setVideoEnabled] = useState(false)
   const [showClockOut, setShowClockOut] = useState(false)
   const [sessionMs, setSessionMs] = useState(0)
+  const [productivityScore, setProductivityScore] = useState(42)
   const ambientRef = useRef<HTMLAudioElement | null>(null)
 
   // ── Session Timer ─────────────────────────────────────────────────────────
@@ -206,7 +208,7 @@ export default function App() {
     return () => { ambientRef.current?.pause() }
   }, [ambientSound])
 
-  // Send reaction
+  // Send reaction — also bumps productivity score
   const sendReaction = useCallback((content: string, type: TabType) => {
     send(WS_MESSAGE_TYPE.REACTION, {
       content,
@@ -222,15 +224,17 @@ export default function App() {
         message_type: MESSAGE_TYPE.GIF,
       })
     }
+    setProductivityScore(s => Math.min(100, s + 2))
   }, [send, currentRoomId])
 
-  // Invite colleague to meeting room
+  // Invite colleague to meeting room — bumps score
   const inviteUser = useCallback((targetUserId: string) => {
     send(WS_MESSAGE_TYPE.ROOM_INVITE, {
       target_user_id: targetUserId,
       room_id: currentRoomId,
     })
     toast.success('Meeting invite sent! 📨', { className: 'toast' })
+    setProductivityScore(s => Math.min(100, s + 5))
   }, [send, currentRoomId])
 
   // Colleagues in the open floor (lobby) — available to invite
@@ -331,6 +335,9 @@ export default function App() {
 
         {/* Main Content */}
         <div className="main-content">
+          {/* ── Office Ticker (always visible) ────────────────────────── */}
+          <OfficeTicker />
+
           {/* ── Top Bar ───────────────────────────────────────────────────── */}
           <div className="topbar">
             {/* Room / Location info */}
@@ -366,6 +373,17 @@ export default function App() {
             }}>
               ⏱️ {formatDuration(sessionMs)}
             </div>
+
+            {/* Office vibe chip */}
+            <OfficeVibe />
+
+            {/* ON AIR badge when in meeting with video */}
+            {isInCabin && videoEnabled && (
+              <div className="on-air-badge desktop-only">
+                <div className="on-air-dot" />
+                ON AIR
+              </div>
+            )}
 
             {/* View toggle */}
             <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', borderRadius: 10, padding: '4px' }}>
@@ -511,6 +529,15 @@ export default function App() {
                         : 'Everyone at their desks — ping someone, react, or book a meeting room!'}
                     </p>
                   </div>
+
+                  {/* Lobby-only: widgets row above colleague grid */}
+                  {!isInCabin && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+                      <PomodoroWidget />
+                      <ProductivityMeter score={productivityScore} />
+                      <DailyQuote />
+                    </div>
+                  )}
 
                   {/* Colleague grid */}
                   {roomUsers.length === 0 ? (

@@ -1,55 +1,66 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   RemoteWorkTogether — Global Design System
-   Dark glassmorphism theme with neon accents
+   RemoteWorkTogether — Office Design System
+   Deep Navy Corporate + Warm Amber accent theme
    ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap');
 
 /* ── CSS Variables ────────────────────────────────────────────────────────── */
 :root {
-  /* Colors */
-  --bg-base: #0a0a14;
-  --bg-surface: #0f0f1e;
-  --bg-panel: #141428;
-  --bg-card: #1a1a30;
-  --bg-hover: #20203a;
-  --bg-active: #252545;
+  /* ── Office Color Palette: Deep Navy + Warm Amber ── */
+  --bg-base: #080c14;
+  --bg-surface: #0c1120;
+  --bg-panel: #101828;
+  --bg-card: #141f32;
+  --bg-hover: #1a2840;
+  --bg-active: #1f3050;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --border-amber: rgba(245, 158, 11, 0.25);
 
-  /* Brand */
-  --accent: #6366f1;
-  --accent-light: #818cf8;
-  --accent-dark: #4f46e5;
-  --accent-glow: rgba(99, 102, 241, 0.4);
+  /* ── Brand: Amber gold as primary accent ── */
+  --accent: #f59e0b;
+  --accent-light: #fbbf24;
+  --accent-dark: #d97706;
+  --accent-glow: rgba(245, 158, 11, 0.35);
 
-  --pink: #ec4899;
-  --pink-glow: rgba(236, 72, 153, 0.3);
-  --teal: #14b8a6;
-  --teal-glow: rgba(20, 184, 166, 0.3);
-  --amber: #f59e0b;
-  --amber-glow: rgba(245, 158, 11, 0.3);
+  /* Secondary: Electric blue for corporate feel */
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --blue-glow: rgba(59, 130, 246, 0.3);
+
+  /* Tertiary: Soft teal for status+online */
+  --teal: #06b6d4;
+  --teal-glow: rgba(6, 182, 212, 0.3);
+
+  --pink: #f472b6;
+  --pink-glow: rgba(244, 114, 182, 0.3);
   --emerald: #10b981;
   --rose: #f43f5e;
-  --purple: #a855f7;
-  --purple-glow: rgba(168, 85, 247, 0.3);
+  --purple: #818cf8;
+  --purple-glow: rgba(129, 140, 248, 0.3);
+  --amber: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.3);
 
   /* Text */
-  --text-primary: #f1f1f7;
-  --text-secondary: #9898b8;
-  --text-muted: #5a5a7a;
-  --text-accent: #818cf8;
+  --text-primary: #e8edf5;
+  --text-secondary: #8899b4;
+  --text-muted: #4d607a;
+  --text-accent: #fbbf24;
 
   /* Glass */
-  --glass-bg: rgba(20, 20, 50, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: blur(20px);
+  --glass-bg: rgba(12, 20, 40, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-blur: blur(24px);
 
   /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.6);
   --shadow-glow: 0 0 30px var(--accent-glow);
   --shadow-pink-glow: 0 0 30px var(--pink-glow);
+  --shadow-blue-glow: 0 0 30px var(--blue-glow);
 
   /* Radius */
   --radius-sm: 8px;
@@ -61,15 +72,17 @@
   /* Typography */
   --font-base: 'Inter', sans-serif;
   --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
   --transition-slow: 400ms ease;
 
-  /* Sidebar */
-  --sidebar-width: 280px;
-  --topbar-height: 64px;
+  /* Layout */
+  --sidebar-width: 285px;
+  --topbar-height: 60px;
+  --ticker-height: 32px;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
@@ -99,26 +112,60 @@ body {
   min-height: 100vh;
 }
 
-/* ── Background ───────────────────────────────────────────────────────────── */
+/* ── Animated Office Background ───────────────────────────────────────────── */
 .animated-bg {
   position: fixed;
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 102, 241, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(236, 72, 153, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 30% at 10% 80%, rgba(20, 184, 166, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 70% at 50% -20%, rgba(245, 158, 11, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(59, 130, 246, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(6, 182, 212, 0.05) 0%, transparent 45%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(244, 114, 182, 0.04) 0%, transparent 40%),
     var(--bg-base);
+  animation: bg-shift 20s ease-in-out infinite alternate;
 }
 
-.animated-bg::after {
+@keyframes bg-shift {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+
+  100% {
+    filter: hue-rotate(15deg);
+  }
+}
+
+/* Subtle dot grid */
+.animated-bg::before {
   content: '';
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.05) 1px, transparent 1px);
-  background-size: 80px 80px;
+    linear-gradient(rgba(245, 158, 11, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Moving glow orbs */
+.animated-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle 400px at 20% 40%, rgba(59, 130, 246, 0.04), transparent),
+    radial-gradient(circle 300px at 80% 30%, rgba(245, 158, 11, 0.05), transparent);
+  animation: orb-float 12s ease-in-out infinite alternate;
+}
+
+@keyframes orb-float {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  100% {
+    transform: translate(30px, -20px);
+  }
 }
 
 /* ── Glass Utilities ──────────────────────────────────────────────────────── */
@@ -173,13 +220,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--pink) 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, var(--accent) 0%, #e07f08 100%);
+  color: #0a0c14;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+  font-weight: 700;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 8px 32px rgba(245, 158, 11, 0.6);
   transform: translateY(-1px);
 }
 
@@ -259,11 +307,29 @@ body {
   border-radius: var(--radius-lg);
   padding: 20px;
   transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.04), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }
 
 .card:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border-amber);
   background: var(--bg-hover);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.07);
+}
+
+.card:hover::after {
+  opacity: 1;
 }
 
 /* ── Badges ───────────────────────────────────────────────────────────────── */
@@ -514,14 +580,14 @@ body {
 
 /* ── Utility ──────────────────────────────────────────────────────────────── */
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent-light) 0%, var(--pink) 50%, var(--teal) 100%);
+  background: linear-gradient(135deg, var(--accent-light) 0%, #f472b6 50%, var(--teal) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-2 {
-  background: linear-gradient(135deg, #818cf8 0%, #ec4899 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--blue) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -561,9 +627,9 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
-  background: rgba(10, 10, 20, 0.8);
-  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(245, 158, 11, 0.12);
+  background: rgba(8, 12, 22, 0.92);
+  backdrop-filter: blur(24px);
   flex-shrink: 0;
   z-index: 10;
 }
@@ -581,10 +647,10 @@ body {
   display: flex;
   align-items: center;
   padding: 0 20px;
-  gap: 12px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(10, 10, 20, 0.6);
-  backdrop-filter: blur(20px);
+  gap: 10px;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.1);
+  background: rgba(8, 12, 22, 0.75);
+  backdrop-filter: blur(24px);
   flex-shrink: 0;
   z-index: 5;
 }
@@ -627,7 +693,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--pink));
+  background: linear-gradient(90deg, var(--accent), var(--blue));
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -1469,4 +1535,346 @@ body {
   .user-grid {
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ✦  NEW OFFICE FEATURES — Addictive gamified widgets
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Office Ticker / Marquee ─────────────────────────────────────────────── */
+.office-ticker {
+  height: var(--ticker-height);
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), rgba(59, 130, 246, 0.1));
+  border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ticker-label {
+  flex-shrink: 0;
+  padding: 0 14px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(245, 158, 11, 0.12);
+  border-right: 1px solid rgba(245, 158, 11, 0.2);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ticker-scroll {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-inner {
+  display: inline-flex;
+  gap: 60px;
+  animation: ticker-slide 35s linear infinite;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticker-item::before {
+  content: '•';
+  color: var(--accent);
+  font-size: 14px;
+}
+
+@keyframes ticker-slide {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Pomodoro / Focus Timer Widget ──────────────────────────────────────── */
+.pomodoro-widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.pomodoro-widget:hover {
+  border-color: var(--border-amber);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.1);
+}
+
+.pomodoro-ring {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: -0.5px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pomodoro-ring-work {
+  background: conic-gradient(var(--accent) var(--pct, 0%), rgba(245, 158, 11, 0.1) 0%);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  color: var(--accent);
+}
+
+.pomodoro-ring-break {
+  background: conic-gradient(var(--emerald) var(--pct, 0%), rgba(16, 185, 129, 0.1) 0%);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  color: var(--emerald);
+}
+
+.pomodoro-ring-inner {
+  position: absolute;
+  inset: 5px;
+  background: var(--bg-card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* ── Productivity Score Meter ────────────────────────────────────────────── */
+.productivity-meter {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meter-bar-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.meter-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 1s ease;
+  background: linear-gradient(90deg, var(--emerald), var(--accent));
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ── Daily Quote Card ──────────────────────────────────────────────────── */
+.daily-quote {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(59, 130, 246, 0.07));
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-quote::before {
+  content: '\201C';
+  position: absolute;
+  top: -10px;
+  left: 12px;
+  font-size: 80px;
+  line-height: 1;
+  color: rgba(245, 158, 11, 0.12);
+  font-family: Georgia, serif;
+  pointer-events: none;
+}
+
+/* ── Office Vibe Chip ─────────────────────────────────────────────────── */
+.vibe-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  animation: vibe-pulse 3s ease-in-out infinite;
+}
+
+.vibe-productive {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: var(--emerald);
+}
+
+.vibe-deep-work {
+  background: rgba(129, 140, 248, 0.12);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  color: var(--purple);
+}
+
+.vibe-chill {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: var(--accent);
+}
+
+.vibe-standup {
+  background: rgba(244, 114, 182, 0.12);
+  border: 1px solid rgba(244, 114, 182, 0.25);
+  color: var(--pink);
+}
+
+@keyframes vibe-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* ── Colleague "Ping" card ───────────────────────────────────────────────── */
+.ping-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.ping-card:hover {
+  border-color: var(--border-amber);
+  background: var(--bg-hover);
+  transform: translateX(3px);
+}
+
+/* ── "On Air" Recording Indicator (in meeting) ────────────────────────── */
+.on-air-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--rose);
+  animation: on-air-pulse 1.5s ease-in-out infinite;
+}
+
+.on-air-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--rose);
+  border-radius: 50%;
+}
+
+@keyframes on-air-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ── Coffee Break Countdown ───────────────────────────────────────────── */
+.coffee-countdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ── Office Score XP badge ─────────────────────────────────────────────── */
+@keyframes xp-pop {
+  0% {
+    transform: scale(0.5) translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.2) translateY(-30px);
+    opacity: 0;
+  }
+}
+
+.xp-pop {
+  position: fixed;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent);
+  pointer-events: none;
+  animation: xp-pop 1s ease-out forwards;
+  z-index: 9999;
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ── Landing page clock style ─────────────────────────────────────────── */
+.office-clock-face {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  background: linear-gradient(135deg, var(--accent-light), var(--blue-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Pulse ring on user-card for speaking/active ─────────────────────── */
+@keyframes speak-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.speaking {
+  animation: speak-ring 1.2s ease-out infinite;
 }
