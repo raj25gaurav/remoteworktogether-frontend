@@ -131,13 +131,7 @@ export default function Sidebar({ send, currentRoomId, isOpen, onClose }: Sideba
 
     const createRoom = (name: string, emoji: string, desc: string, isPrivate: boolean) => {
         send(WS_MESSAGE_TYPE.ROOM_CREATE, { name, emoji, description: desc, is_private: isPrivate })
-        // Auto-join created room
-        setTimeout(() => {
-            const newRoom = Object.values(useStore.getState().rooms).find(
-                (r) => r.name === name && r.created_by === myUser?.id
-            )
-            if (newRoom) send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: newRoom.id })
-        }, 500)
+        // Backend now auto-moves creator into the new room — no client-side join needed
     }
 
     const setStatus = (status: string) => {

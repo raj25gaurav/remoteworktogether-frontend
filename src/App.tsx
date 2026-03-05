@@ -37,8 +37,9 @@ export default function App() {
 
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.LOBBY)
   const [isInCabin, setIsInCabin] = useState(false)
-  const [showInvitePanel, setShowInvitePanel] = useState(false)
+  const [showInvitePanel, setShowInvitePanel] = useState(true)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [videoEnabled, setVideoEnabled] = useState(false)
   const ambientRef = useRef<HTMLAudioElement | null>(null)
 
   // WebSocket
@@ -68,14 +69,26 @@ export default function App() {
     setIsInCabin(currentRoomId !== ROOM_ID.LOBBY)
   }, [currentRoomId])
 
-  // Handle room change — join video automatically in cabin
+  // Handle video enable/disable
   useEffect(() => {
-    if (isInCabin && !localStream) {
+    if (videoEnabled && !localStream) {
       getLocalStream()
     }
-    if (!isInCabin) {
+    if (!videoEnabled) {
       stopLocalStream()
       closeAllPeers()
+    }
+  }, [videoEnabled])
+
+  // When leaving cabin, reset viewMode and video if not explicitly enabled
+  useEffect(() => {
+    if (!isInCabin) {
+      setViewMode(VIEW_MODE.LOBBY)
+      // If video was only on because of cabin, keep it on (user explicitly enabled it)
+    }
+    if (isInCabin) {
+      // Auto-enable video when entering a cabin
+      setVideoEnabled(true)
     }
   }, [isInCabin])
 
@@ -236,23 +249,34 @@ export default function App() {
               </div>
             </div>
 
-            {/* View toggle (cabin only) */}
-            {isInCabin && (
-              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', borderRadius: 10, padding: '4px' }}>
+            {/* View toggle (always visible when video is available) */}
+            <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', borderRadius: 10, padding: '4px' }}>
+              <button
+                className={`btn btn-sm ${viewMode === VIEW_MODE.LOBBY ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setViewMode(VIEW_MODE.LOBBY)}
+              >
+                👥 People
+              </button>
+              <button
+                className={`btn btn-sm ${viewMode === VIEW_MODE.VIDEO ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => {
+                  setViewMode(VIEW_MODE.VIDEO)
+                  setVideoEnabled(true)
+                }}
+              >
+                🎥 Video
+              </button>
+              {isInCabin && (
                 <button
-                  className={`btn btn-sm ${viewMode === VIEW_MODE.LOBBY ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setViewMode(VIEW_MODE.LOBBY)}
+                  className="btn btn-sm btn-danger"
+                  style={{ fontSize: '12px' }}
+                  onClick={() => send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: 'lobby' })}
+                  title="Leave cabin and return to lobby"
                 >
-                  👥 People
+                  🚪 Leave
                 </button>
-                <button
-                  className={`btn btn-sm ${viewMode === VIEW_MODE.VIDEO ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setViewMode(VIEW_MODE.VIDEO)}
-                >
-                  🎥 Video
-                </button>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Controls */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -339,9 +363,9 @@ export default function App() {
           {/* Content Row */}
           <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
             {/* Main Area */}
-            <div className="content-area" style={{ padding: isInCabin && viewMode === 'video' ? '12px' : '20px' }}>
-              {/* Cabin Video Mode */}
-              {isInCabin && viewMode === 'video' ? (
+            <div className="content-area" style={{ padding: viewMode === 'video' ? '12px' : '20px' }}>
+              {/* Video Mode (available in lobby AND cabin) */}
+              {viewMode === 'video' ? (
                 <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <VideoGrid
                     localStream={localStream}
@@ -382,47 +406,50 @@ export default function App() {
                     <UserGrid users={roomUsers} onInvite={inviteUser} />
                   )}
 
-                  {/* ── Invite to Cabin panel (only shown when inside a cabin) ── */}
+                  {/* ── Invite to Cabin panel (shown when inside a cabin) ── */}
                   {isInCabin && (
                     <div style={{ marginTop: '24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                          📨 Invite from Lobby ({lobbyUsersToInvite.length})
-                        </div>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setShowInvitePanel(!showInvitePanel)}
-                        >
-                          {showInvitePanel ? 'Hide' : 'Show'}
-                        </button>
+                      <div style={{
+                        fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)',
+                        letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px',
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                      }}>
+                        📨 Invite from Lobby
+                        <span style={{
+                          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
+                          borderRadius: 20, padding: '1px 7px', fontSize: '11px', color: 'var(--accent)',
+                        }}>
+                          {lobbyUsersToInvite.length}
+                        </span>
                       </div>
-                      {showInvitePanel && (
-                        lobbyUsersToInvite.length === 0 ? (
-                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                            No one in the lobby to invite right now.
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {lobbyUsersToInvite.map((u: User) => (
-                              <div key={u.id} style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 14px',
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 12,
-                              }}>
-                                <span style={{ fontSize: '1.4rem' }}>{AVATAR_MAP[u.avatar] || '👤'}</span>
-                                <span style={{ flex: 1, fontWeight: 600, fontSize: '13px' }}>{u.username}</span>
-                                <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => inviteUser(u.id)}
-                                >
-                                  Invite
-                                </button>
+                      {lobbyUsersToInvite.length === 0 ? (
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                          🎉 Everyone is in this cabin already — or the lobby is empty.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {lobbyUsersToInvite.map((u: User) => (
+                            <div key={u.id} style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '10px 14px',
+                              background: 'var(--bg-card)',
+                              border: '1px solid var(--border)',
+                              borderRadius: 12,
+                            }}>
+                              <span style={{ fontSize: '1.4rem' }}>{AVATAR_MAP[u.avatar] || '👤'}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 600, fontSize: '13px' }}>{u.username}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>In Lobby</div>
                               </div>
-                            ))}
-                          </div>
-                        )
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => inviteUser(u.id)}
+                              >
+                                📨 Invite
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}

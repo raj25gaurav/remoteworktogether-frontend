@@ -61,9 +61,14 @@ export function useWebSocket(userId: string | null) {
                 }
                 break
 
-            case WS_MESSAGE_TYPE.ROOM_LEAVE:
-                // Update room member state handled via user_list
+            case WS_MESSAGE_TYPE.ROOM_LEAVE: {
+                // Update the leaving user's room_id to lobby in local state
+                if (payload.user_id) {
+                    const user = useStore.getState().users[payload.user_id]
+                    if (user) upsertUser({ ...user, room_id: 'lobby' })
+                }
                 break
+            }
 
             case WS_MESSAGE_TYPE.ROOM_INVITE:
                 setPendingInvite({ room: payload.room, from_user: payload.from_user, from_id: payload.from_id })
