@@ -1,26 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { STUN_SERVERS, API_URL } from '../utils/constants'
+import { STUN_SERVERS } from '../utils/constants'
 import { WS_MESSAGE_TYPE } from '../types/enums'
-
-// Cached ICE server config — fetched once from backend, valid for 1 hour
-let cachedIceServers: RTCIceServer[] | null = null
-
-async function fetchIceServers(): Promise<RTCIceServer[]> {
-    if (cachedIceServers) return cachedIceServers
-    try {
-        const res = await fetch(`${API_URL}/api/turn-credentials`)
-        if (!res.ok) throw new Error('Failed to fetch TURN credentials')
-        const data = await res.json()
-        cachedIceServers = data.iceServers
-        // Clear cache after TTL so we refresh credentials
-        setTimeout(() => { cachedIceServers = null }, (data.ttl - 60) * 1000)
-        console.log('[WebRTC] TURN credentials fetched from backend ✅')
-        return cachedIceServers!
-    } catch (e) {
-        console.warn('[WebRTC] Could not fetch TURN credentials, using fallback STUN only:', e)
-        return STUN_SERVERS.iceServers as RTCIceServer[]
-    }
-}
 
 export function useWebRTC(
     userId: string | null,
@@ -42,7 +22,6 @@ export function useWebRTC(
 
     // ── Get local camera/mic ──────────────────────────────────────────────────
     const getLocalStream = useCallback(async () => {
-        // Don't re-acquire if already have stream
         if (localStreamRef.current) return localStreamRef.current
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -62,28 +41,25 @@ export function useWebRTC(
         }
     }, [])
 
-    // ── Create a peer connection for a given remote user ──────────────────────
-    const createPeer = useCallback(async (targetId: string): Promise<RTCPeerConnection> => {
+    // ── Create a peer connection ──────────────────────────────────────────────
+    const createPeer = useCallback((targetId: string): RTCPeerConnection => {
         // Close any existing connection first
         if (peersRef.current[targetId]) {
             peersRef.current[targetId].close()
             delete peersRef.current[targetId]
         }
 
-        // Fetch fresh TURN credentials from backend (cached for 1hr)
-        const iceServers = await fetchIceServers()
-        const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 10 })
+        const pc = new RTCPeerConnection(STUN_SERVERS)
         peersRef.current[targetId] = pc
         iceCandidateBuffer.current[targetId] = []
 
-
-        // Add all current local tracks
+        // Add all local tracks to the connection
         const stream = localStreamRef.current
         if (stream) {
             stream.getTracks().forEach(track => pc.addTrack(track, stream))
         }
 
-        // Send ICE candidates as they arrive
+        // Send ICE candidates as they are discovered
         pc.onicecandidate = (e) => {
             if (e.candidate) {
                 sendRef.current(WS_MESSAGE_TYPE.WEBRTC_ICE, {
@@ -93,19 +69,17 @@ export function useWebRTC(
             }
         }
 
-        // Receive remote stream
+        // When we receive remote tracks, save them
         pc.ontrack = (e) => {
             if (e.streams && e.streams[0]) {
-                const remoteStream = e.streams[0]
-                setRemoteStreams(prev => ({ ...prev, [targetId]: remoteStream }))
+                setRemoteStreams(prev => ({ ...prev, [targetId]: e.streams[0] }))
             }
         }
 
         pc.onconnectionstatechange = () => {
             const state = pc.connectionState
-            if (state === 'failed') {
-                pc.restartIce()
-            }
+            console.log(`[WebRTC] Connection to ${targetId}: ${state}`)
+            if (state === 'failed') pc.restartIce()
             if (state === 'disconnected' || state === 'closed') {
                 setRemoteStreams(prev => {
                     const next = { ...prev }
@@ -120,7 +94,7 @@ export function useWebRTC(
         return pc
     }, [])
 
-    // ── Drain buffered ICE candidates after remote description is set ─────────
+    // ── Drain ICE candidates buffered before remote description was set ────────
     const drainIceCandidates = useCallback(async (targetId: string, pc: RTCPeerConnection) => {
         const buffered = iceCandidateBuffer.current[targetId] || []
         iceCandidateBuffer.current[targetId] = []
@@ -133,13 +107,13 @@ export function useWebRTC(
         }
     }, [])
 
-    // ── Initiate a call to another user (caller side) ─────────────────────────
+    // ── Initiate a call to another user ──────────────────────────────────────
     const callUser = useCallback(async (targetId: string) => {
         if (!localStreamRef.current) {
             const stream = await getLocalStream()
             if (!stream) return
         }
-        const pc = await createPeer(targetId)
+        const pc = createPeer(targetId)
         try {
             const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
             await pc.setLocalDescription(offer)
@@ -152,7 +126,7 @@ export function useWebRTC(
         }
     }, [createPeer, getLocalStream])
 
-    // ── Listen for WebRTC signaling messages from WebSocket ───────────────────
+    // ── Handle incoming WebRTC signaling messages ─────────────────────────────
     useEffect(() => {
         const handler = async (event: Event) => {
             const msg = (event as CustomEvent).detail
@@ -161,10 +135,8 @@ export function useWebRTC(
             if (!sender_id) return
 
             if (type === WS_MESSAGE_TYPE.WEBRTC_OFFER) {
-                // Ensure we have local media before answering
                 if (!localStreamRef.current) await getLocalStream()
-
-                const pc = await createPeer(sender_id)
+                const pc = createPeer(sender_id)
                 try {
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     await drainIceCandidates(sender_id, pc)
@@ -192,7 +164,7 @@ export function useWebRTC(
                 const pc = peersRef.current[sender_id]
                 if (!payload.candidate) return
                 if (!pc || !pc.remoteDescription) {
-                    // Buffer until remote description is set
+                    // Buffer until remote description is ready
                     if (!iceCandidateBuffer.current[sender_id]) {
                         iceCandidateBuffer.current[sender_id] = []
                     }
@@ -210,11 +182,6 @@ export function useWebRTC(
         window.addEventListener('webrtc-message', handler)
         return () => window.removeEventListener('webrtc-message', handler)
     }, [createPeer, drainIceCandidates, getLocalStream])
-
-    // ── Auto-call all existing users when joining a room ─────────────────────
-    // This effect runs when roomId changes and ensures the newcomer calls everyone
-    const roomIdRef = useRef(roomId)
-    useEffect(() => { roomIdRef.current = roomId }, [roomId])
 
     const stopLocalStream = useCallback(() => {
         localStreamRef.current?.getTracks().forEach(t => t.stop())

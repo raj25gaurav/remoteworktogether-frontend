@@ -38,34 +38,23 @@ export const EMOJI_CATEGORIES: Record<string, string[]> = {
     Objects: ['💎', '🎁', '🔮', '🎵', '🏆', '🎖️', '🔑', '🎀', '💌', '📱', '🖥️', '🎲'],
 }
 
-// ─── TURN Server Credentials ────────────────────────────────────────────────
-// The free "openrelayproject" credentials are demo-only and fail under CGNAT
-// (100.64.x.x IPs = your ISP is using Carrier-Grade NAT → STUN cannot help).
-//
-// TO FIX VIDEO ACROSS DIFFERENT NETWORKS:
-// 1. Sign up FREE at: https://app.metered.ca/signup  (no credit card needed)
-// 2. Create an App → go to "TURN Credentials" in the dashboard
-// 3. Replace TURN_USERNAME and TURN_CREDENTIAL below with your real values
-// 4. Commit and push — done!
-//
-const TURN_USERNAME = 'openrelayproject'    // ← Replace with your Metered.ca username
-const TURN_CREDENTIAL = 'openrelayproject'  // ← Replace with your Metered.ca credential
+// ─── ExpressTURN Free TURN Server ───────────────────────────────────────────
+// Free tier from expressturn.com — 1000 GB/month, no credit card required.
+const TURN_USERNAME = '000000002088093105'
+const TURN_CREDENTIAL = 'GZEd8bGf2RIJKQgNJKOjGH9xADE='
+const TURN_HOST = 'free.expressturn.com:3478'
 
 export const STUN_SERVERS = {
     iceCandidatePoolSize: 10,  // Pre-gather candidates for faster connection setup
     iceServers: [
-        // STUN (works for simple home NAT, fails with CGNAT)
+        // STUN servers (fast, no auth, works on simple NAT)
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
         { urls: 'stun:stun.cloudflare.com:3478' },
-        // TURN relay (REQUIRED for CGNAT / separate ISP networks)
-        { urls: 'turn:open.relay.metered.ca:80', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
-        { urls: 'turn:open.relay.metered.ca:80?transport=tcp', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
-        { urls: 'turn:open.relay.metered.ca:443', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
-        { urls: 'turn:open.relay.metered.ca:443?transport=tcp', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+        // ExpressTURN relay — required for CGNAT / different ISP networks
+        { urls: `turn:${TURN_HOST}`, username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+        { urls: `turn:${TURN_HOST}?transport=tcp`, username: TURN_USERNAME, credential: TURN_CREDENTIAL },
     ],
 }
 
