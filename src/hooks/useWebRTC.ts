@@ -2,11 +2,6 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { STUN_SERVERS } from '../utils/constants'
 import { WS_MESSAGE_TYPE } from '../types/enums'
 
-interface PeerConnection {
-    pc: RTCPeerConnection
-    stream?: MediaStream
-}
-
 export function useWebRTC(
     userId: string | null,
     roomId: string,
@@ -14,117 +9,209 @@ export function useWebRTC(
 ) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({})
-    const peers = useRef<Record<string, PeerConnection>>({})
-    const localStreamRef = useRef<MediaStream | null>(null)
 
+    // Always-current refs so closures never go stale
+    const localStreamRef = useRef<MediaStream | null>(null)
+    const sendRef = useRef(send)
+    const peersRef = useRef<Record<string, RTCPeerConnection>>({})
+    // Buffer ICE candidates that arrive before remote description is set
+    const iceCandidateBuffer = useRef<Record<string, RTCIceCandidateInit[]>>({})
+
+    // Keep sendRef current on every render
+    useEffect(() => { sendRef.current = send }, [send])
+
+    // ── Get local camera/mic ──────────────────────────────────────────────────
     const getLocalStream = useCallback(async () => {
+        // Don't re-acquire if already have stream
+        if (localStreamRef.current) return localStreamRef.current
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             localStreamRef.current = stream
             setLocalStream(stream)
             return stream
-        } catch (e) {
-            console.warn('Media access denied, using audio only')
+        } catch {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
                 localStreamRef.current = stream
                 setLocalStream(stream)
                 return stream
-            } catch (e2) {
-                console.warn('No media access available')
+            } catch {
+                console.warn('[WebRTC] No media access available')
                 return null
             }
         }
     }, [])
 
-    const createPeerConnection = useCallback((targetId: string) => {
-        const pc = new RTCPeerConnection(STUN_SERVERS)
+    // ── Create a peer connection for a given remote user ──────────────────────
+    const createPeer = useCallback((targetId: string): RTCPeerConnection => {
+        // Close any existing connection first
+        if (peersRef.current[targetId]) {
+            peersRef.current[targetId].close()
+            delete peersRef.current[targetId]
+        }
 
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                send(WS_MESSAGE_TYPE.WEBRTC_ICE, { target_id: targetId, candidate: event.candidate })
+        const pc = new RTCPeerConnection(STUN_SERVERS)
+        peersRef.current[targetId] = pc
+        iceCandidateBuffer.current[targetId] = []
+
+        // Add all current local tracks
+        const stream = localStreamRef.current
+        if (stream) {
+            stream.getTracks().forEach(track => pc.addTrack(track, stream))
+        }
+
+        // Send ICE candidates as they arrive
+        pc.onicecandidate = (e) => {
+            if (e.candidate) {
+                sendRef.current(WS_MESSAGE_TYPE.WEBRTC_ICE, {
+                    target_id: targetId,
+                    candidate: e.candidate.toJSON(),
+                })
             }
         }
 
-        pc.ontrack = (event) => {
-            const [remoteStream] = event.streams
-            setRemoteStreams((prev) => ({ ...prev, [targetId]: remoteStream }))
+        // Receive remote stream
+        pc.ontrack = (e) => {
+            if (e.streams && e.streams[0]) {
+                const remoteStream = e.streams[0]
+                setRemoteStreams(prev => ({ ...prev, [targetId]: remoteStream }))
+            }
         }
 
         pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                setRemoteStreams((prev) => {
-                    const updated = { ...prev }
-                    delete updated[targetId]
-                    return updated
+            const state = pc.connectionState
+            if (state === 'failed') {
+                pc.restartIce()
+            }
+            if (state === 'disconnected' || state === 'closed') {
+                setRemoteStreams(prev => {
+                    const next = { ...prev }
+                    delete next[targetId]
+                    return next
                 })
-                delete peers.current[targetId]
+                delete peersRef.current[targetId]
+                delete iceCandidateBuffer.current[targetId]
             }
         }
 
-        // Add local tracks
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach((track) => {
-                pc.addTrack(track, localStreamRef.current!)
-            })
-        }
-
-        peers.current[targetId] = { pc }
         return pc
-    }, [send])
+    }, [])
 
+    // ── Drain buffered ICE candidates after remote description is set ─────────
+    const drainIceCandidates = useCallback(async (targetId: string, pc: RTCPeerConnection) => {
+        const buffered = iceCandidateBuffer.current[targetId] || []
+        iceCandidateBuffer.current[targetId] = []
+        for (const candidate of buffered) {
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate))
+            } catch (e) {
+                console.warn('[WebRTC] Failed to add buffered ICE candidate', e)
+            }
+        }
+    }, [])
+
+    // ── Initiate a call to another user (caller side) ─────────────────────────
     const callUser = useCallback(async (targetId: string) => {
-        const pc = createPeerConnection(targetId)
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        send(WS_MESSAGE_TYPE.WEBRTC_OFFER, { target_id: targetId, sdp: offer })
-    }, [createPeerConnection, send])
+        if (!localStreamRef.current) {
+            const stream = await getLocalStream()
+            if (!stream) return
+        }
+        const pc = createPeer(targetId)
+        try {
+            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+            await pc.setLocalDescription(offer)
+            sendRef.current(WS_MESSAGE_TYPE.WEBRTC_OFFER, {
+                target_id: targetId,
+                sdp: pc.localDescription,
+            })
+        } catch (e) {
+            console.error('[WebRTC] Failed to create offer', e)
+        }
+    }, [createPeer, getLocalStream])
 
-    // Listen for WebRTC signaling messages
+    // ── Listen for WebRTC signaling messages from WebSocket ───────────────────
     useEffect(() => {
         const handler = async (event: Event) => {
             const msg = (event as CustomEvent).detail
             const { type, payload, sender_id } = msg
 
+            if (!sender_id) return
+
             if (type === WS_MESSAGE_TYPE.WEBRTC_OFFER) {
-                const pc = createPeerConnection(sender_id)
-                await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-                const answer = await pc.createAnswer()
-                await pc.setLocalDescription(answer)
-                send(WS_MESSAGE_TYPE.WEBRTC_ANSWER, { target_id: sender_id, sdp: answer })
+                // Ensure we have local media before answering
+                if (!localStreamRef.current) await getLocalStream()
+
+                const pc = createPeer(sender_id)
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+                    await drainIceCandidates(sender_id, pc)
+                    const answer = await pc.createAnswer()
+                    await pc.setLocalDescription(answer)
+                    sendRef.current(WS_MESSAGE_TYPE.WEBRTC_ANSWER, {
+                        target_id: sender_id,
+                        sdp: pc.localDescription,
+                    })
+                } catch (e) {
+                    console.error('[WebRTC] Failed to handle offer', e)
+                }
+
             } else if (type === WS_MESSAGE_TYPE.WEBRTC_ANSWER) {
-                const peer = peers.current[sender_id]
-                if (peer) await peer.pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+                const pc = peersRef.current[sender_id]
+                if (!pc) return
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+                    await drainIceCandidates(sender_id, pc)
+                } catch (e) {
+                    console.error('[WebRTC] Failed to handle answer', e)
+                }
+
             } else if (type === WS_MESSAGE_TYPE.WEBRTC_ICE) {
-                const peer = peers.current[sender_id]
-                if (peer && payload.candidate) {
-                    await peer.pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
+                const pc = peersRef.current[sender_id]
+                if (!payload.candidate) return
+                if (!pc || !pc.remoteDescription) {
+                    // Buffer until remote description is set
+                    if (!iceCandidateBuffer.current[sender_id]) {
+                        iceCandidateBuffer.current[sender_id] = []
+                    }
+                    iceCandidateBuffer.current[sender_id].push(payload.candidate)
+                } else {
+                    try {
+                        await pc.addIceCandidate(new RTCIceCandidate(payload.candidate))
+                    } catch (e) {
+                        console.warn('[WebRTC] Failed to add ICE candidate', e)
+                    }
                 }
             }
         }
 
         window.addEventListener('webrtc-message', handler)
         return () => window.removeEventListener('webrtc-message', handler)
-    }, [createPeerConnection, send])
+    }, [createPeer, drainIceCandidates, getLocalStream])
+
+    // ── Auto-call all existing users when joining a room ─────────────────────
+    // This effect runs when roomId changes and ensures the newcomer calls everyone
+    const roomIdRef = useRef(roomId)
+    useEffect(() => { roomIdRef.current = roomId }, [roomId])
 
     const stopLocalStream = useCallback(() => {
-        localStreamRef.current?.getTracks().forEach((track) => track.stop())
-        setLocalStream(null)
+        localStreamRef.current?.getTracks().forEach(t => t.stop())
         localStreamRef.current = null
-    }, [])
-
-    const toggleMute = useCallback((muted: boolean) => {
-        localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !muted))
-    }, [])
-
-    const toggleCamera = useCallback((off: boolean) => {
-        localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = !off))
+        setLocalStream(null)
     }, [])
 
     const closeAllPeers = useCallback(() => {
-        Object.values(peers.current).forEach(({ pc }) => pc.close())
-        peers.current = {}
+        Object.values(peersRef.current).forEach(pc => pc.close())
+        peersRef.current = {}
+        iceCandidateBuffer.current = {}
         setRemoteStreams({})
+    }, [])
+
+    const toggleMute = useCallback((muted: boolean) => {
+        localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !muted })
+    }, [])
+
+    const toggleCamera = useCallback((off: boolean) => {
+        localStreamRef.current?.getVideoTracks().forEach(t => { t.enabled = !off })
     }, [])
 
     return {

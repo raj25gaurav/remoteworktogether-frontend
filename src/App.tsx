@@ -69,10 +69,17 @@ export default function App() {
     setIsInCabin(currentRoomId !== ROOM_ID.LOBBY)
   }, [currentRoomId])
 
-  // Handle video enable/disable
+  // Handle video enable/disable — get stream then call everyone in the room
   useEffect(() => {
     if (videoEnabled && !localStream) {
-      getLocalStream()
+      getLocalStream().then((stream) => {
+        if (!stream) return
+        // Call all other users currently in this room
+        const others = Object.values(useStore.getState().users).filter(
+          (u: User) => u.id !== myUser?.id && u.room_id === useStore.getState().currentRoomId
+        )
+        others.forEach((u: User) => callUser(u.id))
+      })
     }
     if (!videoEnabled) {
       stopLocalStream()
@@ -80,14 +87,15 @@ export default function App() {
     }
   }, [videoEnabled])
 
-  // When leaving cabin, reset viewMode and video if not explicitly enabled
+  // When entering a cabin, auto-enable video
   useEffect(() => {
     if (!isInCabin) {
       setViewMode(VIEW_MODE.LOBBY)
-      // If video was only on because of cabin, keep it on (user explicitly enabled it)
+      setVideoEnabled(false)
+      closeAllPeers()
+      stopLocalStream()
     }
     if (isInCabin) {
-      // Auto-enable video when entering a cabin
       setVideoEnabled(true)
     }
   }, [isInCabin])
@@ -95,6 +103,19 @@ export default function App() {
   // Sync WebRTC mute/camera
   useEffect(() => { rtcToggleMute(isMuted) }, [isMuted])
   useEffect(() => { rtcToggleCamera(isCameraOff) }, [isCameraOff])
+
+  // When a new peer joins our cabin, call them (only we need to initiate, they answer)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { userId: peerId } = (e as CustomEvent).detail
+      if (localStream && peerId) {
+        callUser(peerId)
+      }
+    }
+    window.addEventListener('peer-joined', handler)
+    return () => window.removeEventListener('peer-joined', handler)
+  }, [localStream, callUser])
+
 
   // Ambient sound control
   useEffect(() => {

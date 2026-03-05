@@ -30,7 +30,19 @@ export function useWebSocket(userId: string | null) {
                 break
 
             case WS_MESSAGE_TYPE.USER_JOIN:
-                if (payload.user) upsertUser(payload.user)
+                if (payload.user) {
+                    upsertUser(payload.user)
+                    // Fire event so App can initiate WebRTC call to the new peer if in same room
+                    const myCurrentRoom = useStore.getState().currentRoomId
+                    const myId = useStore.getState().myUser?.id
+                    if (
+                        payload.user.id !== myId &&
+                        payload.user.room_id === myCurrentRoom &&
+                        myCurrentRoom !== 'lobby'
+                    ) {
+                        window.dispatchEvent(new CustomEvent('peer-joined', { detail: { userId: payload.user.id } }))
+                    }
+                }
                 break
 
             case WS_MESSAGE_TYPE.USER_LEAVE:
