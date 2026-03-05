@@ -27,10 +27,32 @@ function VideoTile({
     const avatarEmoji = AVATAR_MAP[user.avatar] || '👤'
 
     useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream
+        const el = videoRef.current
+        if (!el || !stream) return
+
+        // Explicitly set srcObject and call play() to beat browser autoplay policy.
+        // Remote streams must NEVER be muted — that's what kills audio.
+        el.srcObject = stream
+        el.muted = !!isLocal
+
+        const tryPlay = () => {
+            el.play().catch((err) => {
+                if (err.name !== 'AbortError') {
+                    console.warn('[VideoTile] Autoplay blocked, retrying on click:', err.name)
+                    const retry = () => { el.play().catch(() => { }); document.removeEventListener('click', retry) }
+                    document.addEventListener('click', retry, { once: true })
+                }
+            })
         }
-    }, [stream])
+
+        if (el.readyState >= 2) {
+            tryPlay()
+        } else {
+            el.onloadedmetadata = tryPlay
+        }
+
+        return () => { el.onloadedmetadata = null }
+    }, [stream, isLocal])
 
     return (
         <div className="video-tile" style={{ borderColor: `${user.color}33` }}>
@@ -38,8 +60,8 @@ function VideoTile({
                 <video
                     ref={videoRef}
                     autoPlay
-                    muted={isLocal}
                     playsInline
+                    muted={!!isLocal}
                     style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }}
                 />
             ) : (
@@ -65,7 +87,7 @@ function VideoTile({
                 {user.is_camera_off && ' 📵'}
             </div>
 
-            {/* Glow border for active speaker (simplified) */}
+            {/* Glow border */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
@@ -108,7 +130,6 @@ export default function VideoGrid({
                 .map((user) => {
                     const stream = remoteStreams[user.id]
                     if (!stream) {
-                        // Show avatar tile even without stream, with call button
                         return (
                             <VideoTile key={user.id} user={user} />
                         )
