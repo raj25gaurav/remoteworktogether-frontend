@@ -40,10 +40,19 @@ export const EMOJI_CATEGORIES: Record<string, string[]> = {
 
 export const STUN_SERVERS = {
     iceServers: [
+        // Robust list of free STUN servers to help discover IPs across standard routers
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
-        // Free TURN servers — required for audio/video to work through NAT on the internet
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        // Cloudflare's incredibly fast global STUN server
+        { urls: 'stun:stun.cloudflare.com:3478' },
+
+        // Free TURN servers — REQUIRED for strict NATs/Firewalls
+        // NOTE: Free TURN servers are notoriously unreliable. If video still fails
+        // across different networks, you MUST replace these with a paid service 
+        // like Twilio Network Traversal or Metered.ca with a real API key.
         {
             urls: 'turn:open.relay.metered.ca:80',
             username: 'openrelayproject',
