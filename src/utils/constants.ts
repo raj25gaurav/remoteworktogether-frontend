@@ -38,38 +38,37 @@ export const EMOJI_CATEGORIES: Record<string, string[]> = {
     Objects: ['💎', '🎁', '🔮', '🎵', '🏆', '🎖️', '🔑', '🎀', '💌', '📱', '🖥️', '🎲'],
 }
 
+// ─── TURN Server Credentials ────────────────────────────────────────────────
+// The free "openrelayproject" credentials are demo-only and fail under CGNAT
+// (100.64.x.x IPs = your ISP is using Carrier-Grade NAT → STUN cannot help).
+//
+// TO FIX VIDEO ACROSS DIFFERENT NETWORKS:
+// 1. Sign up FREE at: https://app.metered.ca/signup  (no credit card needed)
+// 2. Create an App → go to "TURN Credentials" in the dashboard
+// 3. Replace TURN_USERNAME and TURN_CREDENTIAL below with your real values
+// 4. Commit and push — done!
+//
+const TURN_USERNAME = 'openrelayproject'    // ← Replace with your Metered.ca username
+const TURN_CREDENTIAL = 'openrelayproject'  // ← Replace with your Metered.ca credential
+
 export const STUN_SERVERS = {
+    iceCandidatePoolSize: 10,  // Pre-gather candidates for faster connection setup
     iceServers: [
-        // Robust list of free STUN servers to help discover IPs across standard routers
+        // STUN (works for simple home NAT, fails with CGNAT)
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' },
-        // Cloudflare's incredibly fast global STUN server
         { urls: 'stun:stun.cloudflare.com:3478' },
-
-        // Free TURN servers — REQUIRED for strict NATs/Firewalls
-        // NOTE: Free TURN servers are notoriously unreliable. If video still fails
-        // across different networks, you MUST replace these with a paid service 
-        // like Twilio Network Traversal or Metered.ca with a real API key.
-        {
-            urls: 'turn:open.relay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
-        {
-            urls: 'turn:open.relay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
-        {
-            urls: 'turn:open.relay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-        },
+        // TURN relay (REQUIRED for CGNAT / separate ISP networks)
+        { urls: 'turn:open.relay.metered.ca:80', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+        { urls: 'turn:open.relay.metered.ca:80?transport=tcp', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+        { urls: 'turn:open.relay.metered.ca:443', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+        { urls: 'turn:open.relay.metered.ca:443?transport=tcp', username: TURN_USERNAME, credential: TURN_CREDENTIAL },
     ],
 }
+
 
 export const AMBIENT_SOUNDS: Record<string, { label: string; url: string; icon: string }> = {
     lofi: {
