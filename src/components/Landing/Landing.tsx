@@ -15,7 +15,7 @@ export default function Landing() {
 
     const handleJoin = async () => {
         if (!username.trim()) {
-            setError('Please enter your name!')
+            setError('Please enter your name to check in')
             return
         }
         setLoading(true)
@@ -25,141 +25,124 @@ export default function Landing() {
             if (data.user) {
                 setMyUser(data.user)
             } else {
-                setError('Failed to join. Try again.')
+                setError('Failed to check in. Please try again.')
             }
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Cannot connect to server. Is the backend running?')
+            setError(e instanceof Error ? e.message : 'Cannot connect to the office. Is the server running?')
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <div className="landing">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 relative">
             <div className="animated-bg" />
-            {/* Floating particles */}
-            <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-                {['🛸', '⭐', '🌙', '✨', '💫', '🚀'].map((emoji, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            position: 'absolute',
-                            top: `${10 + i * 15}%`,
-                            left: `${5 + i * 14}%`,
-                            fontSize: `${1 + (i % 3) * 0.5}rem`,
-                            opacity: 0.15,
-                            animation: `avatar-idle ${3 + i}s ease-in-out infinite`,
-                            animationDelay: `${i * 0.5}s`,
-                        }}
-                    >
-                        {emoji}
-                    </div>
-                ))}
-            </div>
-
-            <div className="landing-card" style={{ position: 'relative', zIndex: 1 }}>
-                <div className="landing-hero">
-                    <span className="landing-logo">🏢</span>
-                    <h1 className="landing-title">
-                        <span className="text-gradient">RemoteWork</span>
-                        <br />
-                        <span style={{ color: 'var(--text-primary)' }}>Together</span>
-                    </h1>
-                    <p className="landing-subtitle">
-                        Your virtual office where remote teams stay connected,<br />
-                        collaborate, and have fun — all in one space 🚀
-                    </p>
-                </div>
-
-                {/* Username input */}
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                        Your Display Name
-                    </label>
-                    <input
-                        className="input"
-                        placeholder="e.g. Alex Johnson"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                        maxLength={30}
-                        autoFocus
-                    />
-                </div>
-
-                {/* Avatar selector */}
-                <div style={{ marginBottom: '28px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>
-                        Choose Your Avatar
-                    </label>
-                    <div className="avatar-selector">
-                        {AVATARS.map(([key, emoji]) => (
-                            <div
-                                key={key}
-                                className={`avatar-option ${selectedAvatar === key ? 'selected' : ''}`}
-                                onClick={() => setSelectedAvatar(key as AvatarKey)}
-                            >
-                                <span className="emoji">{emoji}</span>
-                                <span className="label">{key}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {error && (
-                    <div style={{
-                        padding: '10px 14px',
-                        background: 'rgba(244, 63, 94, 0.1)',
-                        border: '1px solid rgba(244, 63, 94, 0.3)',
-                        borderRadius: '10px',
-                        color: '#f43f5e',
-                        fontSize: '13px',
-                        marginBottom: '16px',
-                    }}>
-                        ⚠️ {error}
-                    </div>
-                )}
-
-                <button
-                    className="btn btn-primary btn-lg"
-                    onClick={handleJoin}
-                    disabled={loading}
-                    style={{ width: '100%' }}
-                >
-                    {loading ? (
-                        <>
-                            <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                            Joining...
-                        </>
-                    ) : (
-                        <>🚀 Enter Virtual Office</>
-                    )}
-                </button>
-
-                {/* Features preview */}
-                <div style={{ marginTop: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {[
-                        { icon: '🏠', label: 'Main Lobby' },
-                        { icon: '🚪', label: 'Private Cabins' },
-                        { icon: '🎭', label: 'Emoji Reactions' },
-                        { icon: '🤖', label: 'AI Assistant' },
-                        { icon: '📹', label: 'Video Calls' },
-                        { icon: '🎵', label: 'Ambient Music' },
-                    ].map((f) => (
-                        <div key={f.label} style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            padding: '8px 12px',
-                            background: 'rgba(255,255,255,0.03)',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border)',
-                            fontSize: '12px',
-                            color: 'var(--text-secondary)',
-                            fontWeight: 500,
-                        }}>
-                            <span>{f.icon}</span>
-                            <span>{f.label}</span>
+            
+            <div className="w-full max-w-md relative z-10">
+                {/* Card */}
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8 animate-[slide-in-up_0.3s_ease]">
+                    {/* Logo/Icon */}
+                    <div className="flex justify-center mb-6">
+                        <div className="w-16 h-16 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg">
+                            <span className="text-3xl">🏢</span>
                         </div>
-                    ))}
+                    </div>
+
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                            Check In
+                        </h1>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm">
+                            Welcome to your virtual office
+                        </p>
+                    </div>
+
+                    {/* Username input */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Your Name
+                        </label>
+                        <input
+                            type="text"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            placeholder="Enter your name"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                            maxLength={30}
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Avatar selector */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                            Choose Avatar
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                            {AVATARS.map(([key, emoji]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setSelectedAvatar(key as AvatarKey)}
+                                    className={`aspect-square rounded-lg border-2 transition-all ${
+                                        selectedAvatar === key
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105 shadow-md'
+                                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
+                                    }`}
+                                >
+                                    <span className="text-2xl">{emoji}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm flex items-center gap-2">
+                            <span>⚠️</span>
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {/* Submit button */}
+                    <button
+                        type="button"
+                        onClick={handleJoin}
+                        disabled={loading}
+                        className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {loading ? (
+                            <>
+                                <div className="spinner" />
+                                <span>Checking in...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>✓</span>
+                                <span>Clock In</span>
+                            </>
+                        )}
+                    </button>
+
+                    {/* Features */}
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                                { icon: '🏢', label: 'Office' },
+                                { icon: '🚪', label: 'Rooms' },
+                                { icon: '💬', label: 'Chat' },
+                            ].map((f) => (
+                                <div
+                                    key={f.label}
+                                    className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50"
+                                >
+                                    <span className="text-lg">{f.icon}</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">{f.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

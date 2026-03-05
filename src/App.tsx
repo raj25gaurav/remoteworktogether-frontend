@@ -16,15 +16,8 @@ import { EmojiPanel, AvatarChat, VideoGrid } from './components/LazyComponents'
 
 // Loading fallback component
 const LoadingFallback = () => (
-  <div style={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    padding: '20px',
-    color: 'var(--text-muted)',
-    fontSize: '13px'
-  }}>
-    <div className="spinner" style={{ marginRight: '8px' }} />
+  <div className="flex items-center justify-center p-5 text-slate-500 dark:text-slate-400 text-sm">
+    <div className="spinner mr-2" />
     Loading...
   </div>
 )
@@ -166,21 +159,14 @@ export default function App() {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 relative">
       <div className="animated-bg" />
       <Toaster position="top-center" />
       <ReactionOverlay />
 
       {/* Emoji Panel floating */}
       {showEmojiPanel && (
-        <div style={{
-          position: 'fixed',
-          bottom: 76,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 200,
-          animation: 'slide-in-up 0.2s ease',
-        }}>
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] animate-[slide-in-up_0.2s_ease]">
           <Suspense fallback={<LoadingFallback />}>
             <EmojiPanel
               onSend={sendReaction}
@@ -192,79 +178,91 @@ export default function App() {
 
       {/* Invite notification */}
       {pendingInvite && (
-        <div className="invite-popup">
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-            Invitation from <strong style={{ color: 'var(--text-primary)' }}>{pendingInvite.from_user}</strong>
+        <div className="fixed bottom-6 right-6 z-[200] w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-5 animate-[slide-in-up_0.3s_ease]">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+            Meeting invitation from <strong className="text-slate-900 dark:text-white">{pendingInvite.from_user}</strong>
           </div>
-          <div style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>
+          <div className="text-base font-semibold text-slate-900 dark:text-white mb-2">
             {pendingInvite.room.emoji} Join "{pendingInvite.room.name}"?
           </div>
           {pendingInvite.room.description && (
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
               {pendingInvite.room.description}
             </div>
           )}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" style={{ flex: 2, fontSize: '13px' }} onClick={acceptInvite}>
-              ✅ Join Now
+          <div className="flex gap-2">
+            <button 
+              type="button"
+              onClick={acceptInvite}
+              className="flex-1 px-4 py-2 text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            >
+              Accept
             </button>
-            <button className="btn btn-ghost" style={{ flex: 1, fontSize: '13px' }} onClick={() => setPendingInvite(null)}>
+            <button 
+              type="button"
+              onClick={() => setPendingInvite(null)}
+              className="flex-1 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            >
               Decline
             </button>
           </div>
         </div>
       )}
 
-      <div className="app-layout" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="flex h-screen overflow-hidden relative z-10">
         {/* Left Sidebar */}
         <Sidebar send={send} currentRoomId={currentRoomId} isOpen={showMobileSidebar} onClose={() => setShowMobileSidebar(false)} />
 
-        {/* Mobile sidebar darkened overlay */}
+        {/* Mobile sidebar overlay */}
         {showMobileSidebar && (
           <div
             onClick={() => setShowMobileSidebar(false)}
-            className="mobile-overlay"
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           />
         )}
 
         {/* Main Content */}
-        <div className="main-content">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-slate-900 relative z-10">
           {/* Top Bar */}
-          <div className="topbar">
+          <header className="h-16 flex items-center px-6 gap-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
             {/* Room info */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: isInCabin ? 'rgba(236,72,153,0.15)' : 'rgba(99,102,241,0.15)',
-                border: `1px solid ${isInCabin ? 'rgba(236,72,153,0.3)' : 'rgba(99,102,241,0.3)'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.2rem',
-              }}>
-                {currentRoom?.emoji || '🏠'}
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl">
+                {currentRoom?.emoji || '🏢'}
               </div>
               <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px' }}>
-                  {currentRoom?.name || 'Main Lobby'}
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {currentRoom?.name || 'Main Office'}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {roomUsers.length} {roomUsers.length === 1 ? 'person' : 'people'} here
-                  {isInCabin && ' • Private Cabin 🔒'}
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  {roomUsers.length} {roomUsers.length === 1 ? 'colleague' : 'colleagues'} checked in
+                  {isInCabin && ' • Private'}
                 </div>
               </div>
             </div>
 
-            {/* View toggle (cabin only) */}
+            {/* View toggle */}
             {isInCabin && (
-              <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', borderRadius: 10, padding: '4px' }}>
+              <div className="flex gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 flex-shrink-0">
                 <button
-                  className={`btn btn-sm ${viewMode === VIEW_MODE.LOBBY ? 'btn-primary' : 'btn-ghost'}`}
+                  type="button"
                   onClick={() => setViewMode(VIEW_MODE.LOBBY)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+                    viewMode === VIEW_MODE.LOBBY
+                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
                   👥 People
                 </button>
                 <button
-                  className={`btn btn-sm ${viewMode === VIEW_MODE.VIDEO ? 'btn-primary' : 'btn-ghost'}`}
+                  type="button"
                   onClick={() => setViewMode(VIEW_MODE.VIDEO)}
+                  className={`px-4 py-2 text-xs font-semibold rounded-md transition-all ${
+                    viewMode === VIEW_MODE.VIDEO
+                      ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
                   🎥 Video
                 </button>
@@ -272,94 +270,124 @@ export default function App() {
             )}
 
             {/* Controls */}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div className="flex gap-2 items-center">
               {/* Mobile hamburger */}
               <button
-                className="btn btn-ghost btn-icon btn-sm mobile-only"
+                type="button"
                 onClick={() => setShowMobileSidebar(true)}
                 title="Menu"
+                className="lg:hidden w-9 h-9 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 ☰
               </button>
 
               {/* Mute */}
               <button
-                className={`btn btn-icon btn-sm ${isMuted ? 'btn-danger' : 'btn-ghost'}`}
+                type="button"
                 onClick={toggleMute}
                 title={isMuted ? 'Unmute' : 'Mute'}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                  isMuted
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
               >
                 {isMuted ? '🔇' : '🎤'}
               </button>
 
               {/* Camera */}
               <button
-                className={`btn btn-icon btn-sm ${isCameraOff ? 'btn-danger' : 'btn-ghost'}`}
+                type="button"
                 onClick={toggleCamera}
                 title={isCameraOff ? 'Turn on camera' : 'Turn off camera'}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                  isCameraOff
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
               >
                 {isCameraOff ? '📵' : '📹'}
               </button>
 
               {/* Emoji */}
               <button
-                className={`btn btn-icon btn-sm ${showEmojiPanel ? 'btn-primary' : 'btn-ghost'}`}
+                type="button"
                 onClick={toggleEmojiPanel}
                 title="Reactions & GIFs"
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                  showEmojiPanel
+                    ? 'bg-blue-500 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
               >
                 😄
               </button>
 
               {/* Ambient sound */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  className={`btn btn-icon btn-sm ${ambientSound ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => {
-                    if (ambientSound) {
-                      setAmbientSound(null)
-                    } else {
-                      setAmbientSound('lofi')
-                    }
-                  }}
-                  title="Ambient Sounds"
-                >
-                  🎵
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (ambientSound) {
+                    setAmbientSound(null)
+                  } else {
+                    setAmbientSound('lofi')
+                  }
+                }}
+                title="Ambient Sounds"
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+                  ambientSound
+                    ? 'bg-blue-500 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                🎵
+              </button>
 
               {/* WS status */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                padding: '4px 10px',
-                background: wsConnected ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
-                border: `1px solid ${wsConnected ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}`,
-                borderRadius: 999, fontSize: '11px',
-                color: wsConnected ? '#10b981' : '#f43f5e',
-              }}>
-                <div style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: wsConnected ? '#10b981' : '#f43f5e',
-                  animation: wsConnected ? 'status-dot 2s infinite' : 'none',
-                }} />
-                {wsConnected ? 'Connected' : 'Reconnecting...'}
+              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
+                wsConnected
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+              }`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                }`} />
+                {wsConnected ? 'Connected' : 'Reconnecting'}
               </div>
 
               {/* Toggle panels */}
-              <button className={`btn btn-sm ${showChat ? 'btn-primary' : 'btn-ghost'} desktop-only`} onClick={toggleChat}>
-                💬
+              <button 
+                type="button"
+                onClick={toggleChat}
+                className={`hidden lg:flex px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  showChat
+                    ? 'bg-blue-500 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                Chat
               </button>
-              <button className={`btn btn-sm ${showAIPanel ? 'btn-primary' : 'btn-ghost'} desktop-only`} onClick={toggleAIPanel}>
-                🤖
+              <button 
+                type="button"
+                onClick={toggleAIPanel}
+                className={`hidden lg:flex px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  showAIPanel
+                    ? 'bg-blue-500 text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                AI
               </button>
             </div>
-          </div>
+          </header>
 
           {/* Content Row */}
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+          <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Main Area */}
-            <div className="content-area" style={{ padding: isInCabin && viewMode === 'video' ? '12px' : '20px' }}>
+            <main className={`flex-1 overflow-y-auto overflow-x-hidden ${isInCabin && viewMode === 'video' ? 'p-4' : 'p-6'}`}>
               {/* Cabin Video Mode */}
               {isInCabin && viewMode === 'video' ? (
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="h-full min-h-0">
                   <Suspense fallback={<LoadingFallback />}>
                     <VideoGrid
                       localStream={localStream}
@@ -375,27 +403,29 @@ export default function App() {
               ) : (
                 <>
                   {/* Section header */}
-                  <div style={{ marginBottom: '20px' }}>
-                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, marginBottom: '6px' }}>
+                  <header className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                       {isInCabin ? (
                         <>{currentRoom?.emoji} {currentRoom?.name}</>
                       ) : (
-                        <>🏠 Main Lobby</>
+                        <>Main Office</>
                       )}
                     </h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">
                       {isInCabin
-                        ? currentRoom?.description || 'Your private cabin — invite your crew!'
-                        : 'Everyone is here — say hello, react, or head to a private cabin!'}
+                        ? currentRoom?.description || 'Your private meeting room — invite your team!'
+                        : 'Welcome to the office. Check in with your team or head to a meeting room.'}
                     </p>
-                  </div>
+                  </header>
 
                   {/* User grid */}
                   {roomUsers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '12px' }}>👻</div>
-                      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '6px' }}>It's quiet here...</div>
-                      <div style={{ fontSize: '13px' }}>Invite someone from the sidebar to join you!</div>
+                    <div className="text-center py-16 px-5">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 mb-4">
+                        <div className="text-3xl">👔</div>
+                      </div>
+                      <div className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No one checked in yet</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Invite colleagues from the sidebar to join this room</div>
                     </div>
                   ) : (
                     <UserGrid users={roomUsers} onInvite={inviteUser} />
@@ -403,38 +433,37 @@ export default function App() {
 
                   {/* ── Invite to Cabin panel (only shown when inside a cabin) ── */}
                   {isInCabin && (
-                    <div style={{ marginTop: '24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                          📨 Invite from Lobby ({lobbyUsersToInvite.length})
+                    <section className="mt-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                          Invite from Main Office ({lobbyUsersToInvite.length})
                         </div>
                         <button
-                          className="btn btn-ghost btn-sm"
+                          type="button"
                           onClick={() => setShowInvitePanel(!showInvitePanel)}
+                          className="px-3 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                         >
                           {showInvitePanel ? 'Hide' : 'Show'}
                         </button>
                       </div>
                       {showInvitePanel && (
                         lobbyUsersToInvite.length === 0 ? (
-                          <div style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '12px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
-                            No one in the lobby to invite right now.
+                          <div className="text-sm text-slate-600 dark:text-slate-400 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-center">
+                            No colleagues available in the main office right now.
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div className="flex flex-col gap-2">
                             {lobbyUsersToInvite.map((u: User) => (
-                              <div key={u.id} style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 14px',
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 12,
-                              }}>
-                                <span style={{ fontSize: '1.4rem' }}>{AVATAR_MAP[u.avatar] || '👤'}</span>
-                                <span style={{ flex: 1, fontWeight: 600, fontSize: '13px' }}>{u.username}</span>
+                              <div 
+                                key={u.id} 
+                                className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-md transition-all"
+                              >
+                                <span className="text-xl">{AVATAR_MAP[u.avatar] || '👤'}</span>
+                                <span className="flex-1 font-medium text-sm text-slate-900 dark:text-white">{u.username}</span>
                                 <button
-                                  className="btn btn-primary btn-sm"
+                                  type="button"
                                   onClick={() => inviteUser(u.id)}
+                                  className="px-4 py-1.5 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
                                 >
                                   Invite
                                 </button>
@@ -443,69 +472,86 @@ export default function App() {
                           </div>
                         )
                       )}
-                    </div>
+                    </section>
                   )}
 
                   {/* All-lobby: show other spaces */}
                   {!isInCabin && (
-                    <div style={{ marginTop: '32px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '12px' }}>
-                        Other Spaces
+                    <section className="mt-10">
+                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-4">
+                        Meeting Rooms
                       </div>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
                         {Object.values(rooms)
                           .filter((r: Room) => r.id !== ROOM_ID.LOBBY)
                           .map((room: Room) => {
                             const mem = Object.values(users).filter((u: User) => u.room_id === room.id)
                             return (
-                              <div key={room.id} className="card" style={{ minWidth: 180, cursor: 'pointer' }}
-                                onClick={() => send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: room.id })}>
-                                <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>{room.emoji}</div>
-                                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '3px' }}>{room.name}</div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                                  {mem.length} {mem.length === 1 ? 'person' : 'people'}
-                                  {room.is_private ? ' 🔒' : ''}
+                              <div 
+                                key={room.id} 
+                                className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
+                                onClick={() => send(WS_MESSAGE_TYPE.ROOM_JOIN, { room_id: room.id })}
+                              >
+                                <div className="text-2xl mb-3">{room.emoji}</div>
+                                <div className="font-semibold text-sm text-slate-900 dark:text-white mb-2">{room.name}</div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                                  <span>{mem.length} {mem.length === 1 ? 'colleague' : 'colleagues'}</span>
+                                  {room.is_private && <span>🔒</span>}
                                 </div>
-                                {mem.slice(0, 3).map((u: User) => (
-                                  <span key={u.id} style={{ fontSize: '1rem', marginRight: '2px' }}>
-                                    {AVATAR_MAP[u.avatar] || '👤'}
-                                  </span>
-                                ))}
+                                <div className="flex gap-1.5 items-center">
+                                  {mem.slice(0, 4).map((u: User) => (
+                                    <span key={u.id} className="text-base">
+                                      {AVATAR_MAP[u.avatar] || '👤'}
+                                    </span>
+                                  ))}
+                                  {mem.length > 4 && (
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">+{mem.length - 4}</span>
+                                  )}
+                                </div>
                               </div>
                             )
                           })}
                       </div>
-                    </div>
+                    </section>
                   )}
 
                   {/* Ambient sound selector */}
                   {!isInCabin && (
-                    <div style={{ marginTop: '24px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px' }}>
-                        Ambient Sounds
+                    <section className="mt-10">
+                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-4">
+                        Focus Mode
                       </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <div className="flex gap-2 flex-wrap">
                         {Object.entries(AMBIENT_SOUNDS).map(([key, s]) => (
                           <button
                             key={key}
-                            className={`btn btn-sm ${ambientSound === key ? 'btn-primary' : 'btn-secondary'}`}
+                            type="button"
                             onClick={() => setAmbientSound(ambientSound === key ? null : key)}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                              ambientSound === key
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                            }`}
                           >
                             {s.icon} {s.label}
                             {ambientSound === key && ' ♪'}
                           </button>
                         ))}
                         {ambientSound && (
-                          <button className="btn btn-sm btn-ghost" onClick={() => setAmbientSound(null)}>
+                          <button 
+                            type="button"
+                            onClick={() => setAmbientSound(null)}
+                            className="px-4 py-2 text-sm font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                          >
                             ⏹ Stop
                           </button>
                         )}
                       </div>
-                    </div>
+                    </section>
                   )}
                 </>
               )}
-            </div>
+            </main>
 
             {/* Chat Panel */}
             {showChat && (
@@ -527,25 +573,65 @@ export default function App() {
       </div>
 
       {/* Mobile bottom nav bar */}
-      <div className="mobile-bottom-bar">
-        <button className={`btn btn-ghost btn-sm`} onClick={() => setShowMobileSidebar(true)}>☰ Menu</button>
-        <button className={`btn btn-sm ${showChat ? 'btn-primary' : 'btn-ghost'}`} onClick={toggleChat}>💬 Chat</button>
-        <button className={`btn btn-sm ${showAIPanel ? 'btn-primary' : 'btn-ghost'}`} onClick={toggleAIPanel}>🤖 AI</button>
-        <button className={`btn btn-sm ${isMuted ? 'btn-danger' : 'btn-ghost'}`} onClick={toggleMute}>{isMuted ? '🔇' : '🎤'}</button>
-      </div>
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 z-40 flex items-center justify-around px-2">
+        <button 
+          type="button"
+          onClick={() => setShowMobileSidebar(true)}
+          className="flex flex-col items-center gap-1 px-3 py-2 text-xs text-slate-600 dark:text-slate-400"
+        >
+          <span className="text-lg">☰</span>
+          <span>Menu</span>
+        </button>
+        <button 
+          type="button"
+          onClick={toggleChat}
+          className={`flex flex-col items-center gap-1 px-3 py-2 text-xs rounded-lg transition-colors ${
+            showChat
+              ? 'text-blue-500'
+              : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          <span className="text-lg">💬</span>
+          <span>Chat</span>
+        </button>
+        <button 
+          type="button"
+          onClick={toggleAIPanel}
+          className={`flex flex-col items-center gap-1 px-3 py-2 text-xs rounded-lg transition-colors ${
+            showAIPanel
+              ? 'text-blue-500'
+              : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          <span className="text-lg">🤖</span>
+          <span>AI</span>
+        </button>
+        <button 
+          type="button"
+          onClick={toggleMute}
+          className={`flex flex-col items-center gap-1 px-3 py-2 text-xs rounded-lg transition-colors ${
+            isMuted
+              ? 'text-red-500'
+              : 'text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          <span className="text-lg">{isMuted ? '🔇' : '🎤'}</span>
+          <span>{isMuted ? 'Muted' : 'Mic'}</span>
+        </button>
+      </nav>
 
       {/* Mobile Chat Drawer */}
       {showChat && (
-        <div className="mobile-drawer">
-          <div className="mobile-drawer-handle" onClick={toggleChat} />
+        <div className="lg:hidden flex flex-col fixed bottom-16 left-0 right-0 h-[65vh] bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 rounded-t-xl z-[45] animate-[slide-in-up_0.3s_ease] overflow-hidden shadow-xl">
+          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mt-3 mb-0 cursor-pointer flex-shrink-0" onClick={toggleChat} />
           <ChatPanel send={send} roomId={currentRoomId} onToggleEmoji={toggleEmojiPanel} />
         </div>
       )}
 
       {/* Mobile AI Drawer */}
       {showAIPanel && (
-        <div className="mobile-drawer">
-          <div className="mobile-drawer-handle" onClick={toggleAIPanel} />
+        <div className="lg:hidden flex flex-col fixed bottom-16 left-0 right-0 h-[65vh] bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 rounded-t-xl z-[45] animate-[slide-in-up_0.3s_ease] overflow-hidden shadow-xl">
+          <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mt-3 mb-0 cursor-pointer flex-shrink-0" onClick={toggleAIPanel} />
           <Suspense fallback={<LoadingFallback />}>
             <AvatarChat roomId={currentRoomId} />
           </Suspense>

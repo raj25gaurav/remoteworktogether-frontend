@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useStore, type AppState, type User } from '../../store/useStore'
-import { AvatarDisplay } from '../Lobby/UserCard'
 import { ROLE, AI_EMOTION, type Role, type AIEmotion } from '../../types/enums'
 import { aiApi } from '../../services'
 
@@ -83,57 +82,64 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
     }
 
     return (
-        <div className="ai-panel">
+        <div className="w-80 h-full flex flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             {/* Aria Avatar Header */}
-            <div className="ai-avatar-display">
-                <div className="ai-avatar-emoji">
-                    {ARIA_EMOTIONS[currentEmotion as AIEmotion] || ARIA_EMOTIONS[AI_EMOTION.HAPPY]}
+            <header className="px-4 py-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <div className="flex flex-col items-center text-center">
+                    <div className="text-5xl mb-2">
+                        {ARIA_EMOTIONS[currentEmotion as AIEmotion] || ARIA_EMOTIONS[AI_EMOTION.HAPPY]}
+                    </div>
+                    <div className="text-base font-semibold text-slate-900 dark:text-white mb-1">Aria</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        AI Office Companion
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-full">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            Online & Ready
+                        </span>
+                    </div>
                 </div>
-                <div className="ai-avatar-name">Aria</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    AI Office Companion
-                </div>
-                <div style={{
-                    display: 'flex', gap: '4px', alignItems: 'center',
-                    background: 'rgba(16,185,129,0.1)',
-                    border: '1px solid rgba(16,185,129,0.2)',
-                    borderRadius: '999px',
-                    padding: '2px 10px',
-                    fontSize: '11px',
-                    color: '#10b981',
-                }}>
-                    <div style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }} />
-                    Online & Ready
-                </div>
-            </div>
+            </header>
 
             {/* Chat history */}
-            <div className="ai-chat">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0">
                 {messages.map((msg, i) => (
                     <div
                         key={i}
-                        className={msg.role === ROLE.ASSISTANT ? 'ai-message' : 'user-message'}
-                        style={{ maxWidth: '90%', alignSelf: msg.role === ROLE.USER ? 'flex-end' : 'flex-start' }}
+                        className={`flex flex-col gap-1 ${
+                            msg.role === ROLE.USER ? 'items-end' : 'items-start'
+                        }`}
                     >
                         {msg.role === ROLE.ASSISTANT && (
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                                 Aria {ARIA_EMOTIONS[(msg.emotion as AIEmotion) || AI_EMOTION.HAPPY]}
                             </div>
                         )}
-                        {msg.content}
+                        <div
+                            className={`text-sm leading-relaxed px-3 py-2 rounded-lg max-w-[85%] break-words ${
+                                msg.role === ROLE.USER
+                                    ? 'bg-blue-500 text-white rounded-br-sm'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-sm'
+                            }`}
+                        >
+                            {msg.content}
+                        </div>
                     </div>
                 ))}
                 {loading && (
-                    <div className="ai-message" style={{ maxWidth: '80%' }}>
-                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                            {[0, 1, 2].map((i) => (
-                                <div key={i} style={{
-                                    width: 6, height: 6, background: 'var(--accent)',
-                                    borderRadius: '50%',
-                                    animation: `status-dot 1s ease-in-out infinite`,
-                                    animationDelay: `${i * 0.2}s`,
-                                }} />
-                            ))}
+                    <div className="flex items-start gap-1">
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Aria</div>
+                        <div className="bg-slate-100 dark:bg-slate-700 px-3 py-2 rounded-lg">
+                            <div className="flex gap-1.5 items-center">
+                                {[0, 1, 2].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                                        style={{ animationDelay: `${i * 0.2}s` }}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -141,34 +147,36 @@ export default function AvatarChat({ roomId }: { roomId: string }) {
             </div>
 
             {/* Suggestions */}
-            <div className="ai-suggestions">
-                {suggestions.map((s) => (
-                    <button key={s} className="ai-suggestion-btn" onClick={() => sendMessage(s)}>
-                        {s}
-                    </button>
-                ))}
-            </div>
+            {suggestions.length > 0 && (
+                <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-700 flex gap-2 flex-wrap">
+                    {suggestions.map((s) => (
+                        <button
+                            key={s}
+                            onClick={() => sendMessage(s)}
+                            className="px-3 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Input */}
-            <div className="ai-input-area">
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                        className="input"
-                        style={{ fontSize: '13px', padding: '8px 12px' }}
-                        placeholder="Chat with Aria..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
-                    />
-                    <button
-                        className="btn btn-primary btn-icon"
-                        style={{ flexShrink: 0 }}
-                        onClick={() => sendMessage(input)}
-                        disabled={loading}
-                    >
-                        ➤
-                    </button>
-                </div>
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                <input
+                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    placeholder="Chat with Aria..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
+                />
+                <button
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    onClick={() => sendMessage(input)}
+                    disabled={loading || !input.trim()}
+                >
+                    ➤
+                </button>
             </div>
         </div>
     )

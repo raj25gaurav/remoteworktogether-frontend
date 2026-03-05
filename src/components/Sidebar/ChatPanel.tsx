@@ -17,7 +17,6 @@ function formatTime(ts: number) {
 export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProps) {
     const [input, setInput] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
-    // Use stable selector: get the messages map, then derive room messages
     const allMessages = useStore((s: AppState) => s.messages)
     const messages = useMemo(() => allMessages[roomId] ?? [], [allMessages, roomId])
     const myUser = useStore((s: AppState) => s.myUser)
@@ -41,27 +40,23 @@ export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProp
     if (!showChat) return null
 
     return (
-        <div className="chat-panel">
+        <aside className="w-80 h-full flex flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             {/* Header */}
-            <div style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-            }}>
-                <span style={{ fontSize: '16px' }}>💬</span>
-                <span style={{ fontWeight: 700, fontSize: '14px', flex: 1 }}>Chat</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{messages.length} msgs</span>
-            </div>
+            <header className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2 flex-shrink-0">
+                <span className="text-lg">💬</span>
+                <span className="font-semibold text-sm text-slate-900 dark:text-white flex-1">Team Chat</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">{messages.length}</span>
+            </header>
 
             {/* Messages */}
-            <div className="chat-messages">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-0">
                 {messages.length === 0 && (
-                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', marginTop: '20px' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>💬</div>
-                        No messages yet.<br />Say hi to the team!
+                    <div className="text-center text-slate-500 dark:text-slate-400 mt-8">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 mb-3">
+                            <div className="text-xl">💬</div>
+                        </div>
+                        <div className="font-medium text-slate-900 dark:text-white mb-1 text-sm">No messages yet</div>
+                        <div className="text-xs">Start a conversation</div>
                     </div>
                 )}
                 {messages.map((msg) => (
@@ -71,27 +66,33 @@ export default function ChatPanel({ send, roomId, onToggleEmoji }: ChatPanelProp
             </div>
 
             {/* Input */}
-            <div className="chat-input-area">
-                <button className="btn btn-ghost btn-icon" onClick={onToggleEmoji} title="Emoji & GIF">
+            <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                <button 
+                    type="button"
+                    onClick={onToggleEmoji} 
+                    title="Emoji & GIF"
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
                     😄
                 </button>
                 <input
-                    className="input"
-                    style={{ padding: '8px 12px', fontSize: '13px' }}
+                    type="text"
+                    className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     placeholder="Type a message..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 />
                 <button
-                    className="btn btn-primary btn-icon"
+                    type="button"
                     onClick={() => sendMessage()}
                     disabled={!input.trim()}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     ➤
                 </button>
             </div>
-        </div>
+        </aside>
     )
 }
 
@@ -100,17 +101,17 @@ function ChatMsgItem({ msg, isMe }: { msg: ChatMessage; isMe: boolean }) {
 
     if (msg.message_type === MESSAGE_TYPE.GIF) {
         return (
-            <div className="chat-message">
-                <div style={{ fontSize: '1.2rem' }}>{avatarEmoji}</div>
-                <div className="chat-message-content">
-                    <div className="chat-message-header">
-                        <span className="chat-username" style={{ color: msg.color || 'var(--accent-light)' }}>
+            <div className="flex gap-2">
+                <div className="text-lg flex-shrink-0">{avatarEmoji}</div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white">
                             {msg.username}
                         </span>
-                        <span className="chat-timestamp">{formatTime(msg.timestamp)}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{formatTime(msg.timestamp)}</span>
                     </div>
-                    <div className="chat-text gif">
-                        <img src={msg.content} alt="GIF" />
+                    <div>
+                        <img src={msg.content} alt="GIF" className="max-w-[200px] rounded-lg" />
                     </div>
                 </div>
             </div>
@@ -118,25 +119,21 @@ function ChatMsgItem({ msg, isMe }: { msg: ChatMessage; isMe: boolean }) {
     }
 
     return (
-        <div className={`chat-message ${isMe ? 'flex-row-reverse' : ''}`}
-            style={{ flexDirection: isMe ? 'row-reverse' : 'row' }}
-        >
-            <div style={{ fontSize: '1.2rem', flexShrink: 0 }}>{avatarEmoji}</div>
-            <div className="chat-message-content" style={{ alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                <div className="chat-message-header" style={{ flexDirection: isMe ? 'row-reverse' : 'row' }}>
-                    <span className="chat-username" style={{ color: msg.color || 'var(--accent-light)' }}>
+        <div className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+            <div className="text-lg flex-shrink-0">{avatarEmoji}</div>
+            <div className={`flex-1 min-w-0 flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <div className={`flex items-baseline gap-2 mb-1 ${isMe ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-xs font-semibold text-slate-900 dark:text-white">
                         {isMe ? 'You' : msg.username}
                     </span>
-                    <span className="chat-timestamp">{formatTime(msg.timestamp)}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">{formatTime(msg.timestamp)}</span>
                 </div>
                 <div
-                    className="chat-text"
-                    style={{
-                        background: isMe ? 'rgba(99,102,241,0.15)' : 'var(--bg-card)',
-                        border: `1px solid ${isMe ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`,
-                        borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                        padding: '8px 12px',
-                    }}
+                    className={`text-sm leading-relaxed px-3 py-2 rounded-lg max-w-[80%] break-words ${
+                        isMe 
+                            ? 'bg-blue-500 text-white rounded-br-sm' 
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-sm'
+                    }`}
                 >
                     {msg.content}
                 </div>

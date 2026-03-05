@@ -55,24 +55,33 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
     }
 
     return (
-        <div className="emoji-panel">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-[400px] max-h-[500px] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="emoji-panel-header">
+            <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-700">
                 <button
-                    className={`btn btn-sm ${tab === TAB_TYPE.EMOJI ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ flex: 1 }}
+                    className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        tab === TAB_TYPE.EMOJI
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                    }`}
                     onClick={() => handleTabChange(TAB_TYPE.EMOJI)}
                 >
                     😄 Emojis
                 </button>
                 <button
-                    className={`btn btn-sm ${tab === TAB_TYPE.GIF ? 'btn-primary' : 'btn-ghost'}`}
-                    style={{ flex: 1 }}
+                    className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                        tab === TAB_TYPE.GIF
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                    }`}
                     onClick={() => handleTabChange(TAB_TYPE.GIF)}
                 >
                     🎬 GIFs
                 </button>
-                <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} style={{ flexShrink: 0 }}>
+                <button
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
+                    onClick={onClose}
+                >
                     ✕
                 </button>
             </div>
@@ -80,76 +89,91 @@ export default function EmojiPanel({ onSend, onClose }: EmojiPanelProps) {
             {tab === TAB_TYPE.EMOJI ? (
                 <>
                     {/* Emoji categories */}
-                    <div className="emoji-tabs">
+                    <div className="flex gap-1 p-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
                         {Object.keys(EMOJI_CATEGORIES).map((cat) => (
                             <button
                                 key={cat}
-                                className={`emoji-tab ${emojiCategory === cat ? 'active' : ''}`}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
+                                    emojiCategory === cat
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                }`}
                                 onClick={() => setEmojiCategory(cat as EmojiCategory)}
                             >
                                 {cat}
                             </button>
                         ))}
                     </div>
-                    <div className="emoji-grid">
-                        {(EMOJI_CATEGORIES[emojiCategory] || []).map((emoji) => (
-                            <button
-                                key={emoji}
-                                className="emoji-btn"
-                                onClick={() => { onSend(emoji, TAB_TYPE.EMOJI); onClose() }}
-                                title={emoji}
-                            >
-                                {emoji}
-                            </button>
-                        ))}
+                    <div className="flex-1 overflow-y-auto p-3">
+                        <div className="grid grid-cols-8 gap-1">
+                            {(EMOJI_CATEGORIES[emojiCategory] || []).map((emoji) => (
+                                <button
+                                    key={emoji}
+                                    className="w-10 h-10 flex items-center justify-center text-xl rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                    onClick={() => { onSend(emoji, TAB_TYPE.EMOJI); onClose() }}
+                                    title={emoji}
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </>
             ) : (
                 <>
                     {/* GIF search */}
-                    <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+                        <div className="flex gap-2">
                             <input
-                                className="input"
-                                style={{ padding: '7px 12px', fontSize: '13px' }}
+                                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 placeholder="Search GIFs..."
                                 value={gifSearch}
                                 onChange={(e) => setGifSearch(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && searchGifs(gifSearch)}
                             />
-                            <button className="btn btn-primary btn-sm" onClick={() => searchGifs(gifSearch)}>
+                            <button
+                                className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm font-medium"
+                                onClick={() => searchGifs(gifSearch)}
+                            >
                                 🔍
                             </button>
                         </div>
                     </div>
 
-                    {loadingGifs ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <div className="spinner" style={{ margin: '0 auto 10px' }} />
-                            Loading GIFs...
-                        </div>
-                    ) : gifError ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                            {gifError}
-                        </div>
-                    ) : (
-                        <div className="gif-grid">
-                            {gifs.map((gif) => {
-                                const url = gif.media_formats?.gif?.url || gif.media_formats?.mediumgif?.url
-                                const preview = gif.media_formats?.tinygif?.url || url
-                                if (!url) return null
-                                return (
-                                    <div
-                                        key={gif.id}
-                                        className="gif-item"
-                                        onClick={() => { onSend(url, TAB_TYPE.GIF); onClose() }}
-                                    >
-                                        <img src={preview} alt={gif.content_description || 'GIF'} loading="lazy" />
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
+                    <div className="flex-1 overflow-y-auto">
+                        {loadingGifs ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-slate-400">
+                                <div className="spinner mb-3" />
+                                <div className="text-sm">Loading GIFs...</div>
+                            </div>
+                        ) : gifError ? (
+                            <div className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">
+                                {gifError}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2 p-3">
+                                {gifs.map((gif) => {
+                                    const url = gif.media_formats?.gif?.url || gif.media_formats?.mediumgif?.url
+                                    const preview = gif.media_formats?.tinygif?.url || url
+                                    if (!url) return null
+                                    return (
+                                        <div
+                                            key={gif.id}
+                                            className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all bg-slate-100 dark:bg-slate-700"
+                                            onClick={() => { onSend(url, TAB_TYPE.GIF); onClose() }}
+                                        >
+                                            <img
+                                                src={preview}
+                                                alt={gif.content_description || 'GIF'}
+                                                loading="lazy"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </>
             )}
         </div>

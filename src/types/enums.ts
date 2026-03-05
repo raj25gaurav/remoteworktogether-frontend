@@ -16,10 +16,10 @@ export const USER_STATUS = {
 export type UserStatus = typeof USER_STATUS[keyof typeof USER_STATUS]
 
 export const USER_STATUS_CONFIG = {
-  [USER_STATUS.ONLINE]: { label: '🟢 Online', color: '#10b981' },
-  [USER_STATUS.BUSY]: { label: '🟡 Busy', color: '#f59e0b' },
-  [USER_STATUS.AWAY]: { label: '⚪ Away', color: '#94a3b8' },
-  [USER_STATUS.FOCUS]: { label: '🟣 Focus Mode', color: '#a855f7' },
+  [USER_STATUS.ONLINE]: { label: 'In Office', color: '#10b981', icon: '🟢' },
+  [USER_STATUS.BUSY]: { label: 'In a Meeting', color: '#f59e0b', icon: '🟡' },
+  [USER_STATUS.AWAY]: { label: 'OOO', color: '#94a3b8', icon: '⚪' },
+  [USER_STATUS.FOCUS]: { label: 'Deep Work', color: '#a855f7', icon: '🟣' },
 } as const
 
 // ============================================================================
