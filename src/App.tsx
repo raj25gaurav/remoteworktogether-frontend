@@ -424,6 +424,18 @@ export default function App() {
                 ☰
               </button>
 
+              {/* Games Toggle (Cabin only) */}
+              {isInCabin && (
+                <button
+                  className={`btn btn-sm ${showGames ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setShowGames(g => !g)}
+                  title="Open Games Panel"
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', padding: '4px 12px', borderRadius: 10 }}
+                >
+                  🎮 Games
+                </button>
+              )}
+
               {/* Mute — "Hold" */}
               <button
                 className={`btn btn-icon btn-sm ${isMuted ? 'btn-danger' : 'btn-ghost'}`}

@@ -17,18 +17,8 @@ interface CabinGamesProps {
 export default function CabinGames({ enabled, onToggle }: CabinGamesProps) {
     const [activeGame, setActiveGame] = useState<GameId>(null)
 
-    if (!enabled) {
-        return (
-            <button
-                className="btn btn-sm btn-ghost"
-                onClick={onToggle}
-                title="Open Game Room"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px' }}
-            >
-                🎮 Games
-            </button>
-        )
-    }
+    if (!enabled) return null
+
 
     return (
         <div style={{
