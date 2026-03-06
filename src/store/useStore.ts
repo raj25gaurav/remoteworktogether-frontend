@@ -54,10 +54,27 @@ export interface InviteNotification {
     from_id: string
 }
 
+export interface DbUser {
+    id: string
+    username: string
+    display_name: string
+    avatar: string
+    profession: string
+    bio: string
+    interests: string[]
+    total_lobby_seconds: number
+    total_cabin_seconds: number
+    last_seen?: number
+}
+
 interface AppState {
     // My session
     myUser: User | null
     setMyUser: (user: User | null) => void
+
+    // My persistent DB profile
+    dbUser: DbUser | null
+    setDbUser: (user: DbUser | null) => void
 
     // All users & rooms
     users: Record<string, User>
@@ -113,6 +130,9 @@ export type { AppState }
 export const useStore = create<AppState>((set, get) => ({
     myUser: null,
     setMyUser: (user) => set({ myUser: user }),
+
+    dbUser: null,
+    setDbUser: (user) => set({ dbUser: user }),
 
     users: {},
     rooms: {},

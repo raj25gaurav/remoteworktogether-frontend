@@ -5,14 +5,16 @@ import { useWebRTC } from './hooks/useWebRTC'
 import Landing from './components/Landing/Landing'
 import Sidebar from './components/Sidebar/Sidebar'
 import ChatPanel from './components/Sidebar/ChatPanel'
+import FriendsPanel from './components/Sidebar/FriendsPanel'
 import UserGrid from './components/Lobby/UserCard'
 import VideoGrid from './components/VideoGrid/VideoGrid'
 import EmojiPanel from './components/EmojiPanel/EmojiPanel'
 import AvatarChat from './components/AvatarChat/AvatarChat'
 import ReactionOverlay from './components/ReactionOverlay/ReactionOverlay'
+import FeedbackModal from './components/FeedbackModal'
 import { OfficeTicker, PomodoroWidget, DailyQuote, ProductivityMeter, OfficeVibe } from './components/OfficeWidgets'
 import { Toaster, toast } from 'react-hot-toast'
-import { AMBIENT_SOUNDS, AVATAR_MAP } from './utils/constants'
+import { AMBIENT_SOUNDS, AVATAR_MAP, API_URL } from './utils/constants'
 import { VIEW_MODE, MESSAGE_TYPE, ROOM_ID, WS_MESSAGE_TYPE, type ViewMode, type TabType } from './types/enums'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,59 +28,10 @@ function formatDuration(ms: number): string {
   return `${s}s`
 }
 
-// ── Clock Out Modal ───────────────────────────────────────────────────────────
-function ClockOutModal({ duration, onConfirm, onCancel }: {
-  duration: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: 360 }}>
-        <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🏁</div>
-        <h3 className="modal-title" style={{ marginBottom: '6px' }}>Clock Out?</h3>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-          Great work today! Ready to punch out for the day?
-        </p>
-
-        {/* Session summary */}
-        <div style={{
-          padding: '16px',
-          background: 'rgba(16,185,129,0.08)',
-          border: '1px solid rgba(16,185,129,0.2)',
-          borderRadius: '14px',
-          marginBottom: '20px',
-        }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
-            ⏱️ Time on the Clock
-          </div>
-          <div style={{ fontSize: '26px', fontWeight: 800, fontFamily: 'var(--font-display)', color: '#10b981' }}>
-            {duration}
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Don't forget to update your timesheet! 😄
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onCancel}>
-            😅 Stay a Bit
-          </button>
-          <button
-            className="btn btn-primary"
-            style={{ flex: 2, background: 'linear-gradient(135deg,#f43f5e,#e11d48)', border: 'none' }}
-            onClick={onConfirm}
-          >
-            🔴 Clock Out
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function App() {
   const myUser = useStore((s: AppState) => s.myUser)
+  const dbUser = useStore((s: AppState) => s.dbUser)
   const users = useStore((s: AppState) => s.users)
   const rooms = useStore((s: AppState) => s.rooms)
   const currentRoomId = useStore((s: AppState) => s.currentRoomId)
@@ -98,6 +51,7 @@ export default function App() {
   const setPendingInvite = useStore((s: AppState) => s.setPendingInvite)
   const setAmbientSound = useStore((s: AppState) => s.setAmbientSound)
   const setMyUser = useStore((s: AppState) => s.setMyUser)
+  const setDbUser = useStore((s: AppState) => s.setDbUser)
 
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.LOBBY)
   const [isInCabin, setIsInCabin] = useState(false)
@@ -106,6 +60,8 @@ export default function App() {
   const [showClockOut, setShowClockOut] = useState(false)
   const [sessionMs, setSessionMs] = useState(0)
   const [productivityScore, setProductivityScore] = useState(42)
+  const [activeRightTab, setActiveRightTab] = useState<'chat' | 'friends' | 'ai'>('chat')
+  const [activeDbSessionId, setActiveDbSessionId] = useState<string | null>(null)
   const ambientRef = useRef<HTMLAudioElement | null>(null)
 
   // ── Session Timer ─────────────────────────────────────────────────────────
@@ -117,6 +73,29 @@ export default function App() {
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [myUser])
+
+  // ── DB Session Tracking (start when logged in) ────────────────────────────
+  useEffect(() => {
+    if (!myUser || !dbUser) return
+    // Start a lobby session
+    fetch(`${API_URL}/api/session/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: dbUser.id, location_type: 'lobby', room_name: 'lobby' }),
+    }).then(r => r.json()).then(d => {
+      if (d.session_id) setActiveDbSessionId(d.session_id)
+    }).catch(() => { })
+
+    return () => {
+      // End session on unmount
+      const sid = activeDbSessionId
+      if (sid && dbUser) {
+        navigator.sendBeacon(`${API_URL}/api/session/end`,
+          JSON.stringify({ session_id: sid, user_id: dbUser.id, location_type: currentRoomId === 'lobby' ? 'lobby' : 'cabin' })
+        )
+      }
+    }
+  }, [myUser, dbUser])
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const { send } = useWebSocket(myUser?.id ?? null)
@@ -252,14 +231,28 @@ export default function App() {
     }
   }, [pendingInvite, send, setPendingInvite])
 
-  // Clock Out — end the session
-  const handleClockOut = useCallback(() => {
+  // Clock Out — end DB session + show feedback modal to collect
+  const handleClockOut = useCallback(async () => {
+    if (activeDbSessionId && dbUser) {
+      await fetch(`${API_URL}/api/session/end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeDbSessionId,
+          user_id: dbUser.id,
+          location_type: isInCabin ? 'cabin' : 'lobby',
+        }),
+      }).catch(() => { })
+    }
     sessionStorage.removeItem('clockInTime')
+    sessionStorage.removeItem('dbUserId')
     stopLocalStream()
     closeAllPeers()
     setMyUser(null)
+    setDbUser(null)
+    setActiveDbSessionId(null)
     setShowClockOut(false)
-  }, [stopLocalStream, closeAllPeers, setMyUser])
+  }, [stopLocalStream, closeAllPeers, setMyUser, setDbUser, activeDbSessionId, dbUser, isInCabin])
 
   // ── Show Landing (Clock In) if not logged in ──────────────────────────────
   if (!myUser) return <Landing />
@@ -279,10 +272,11 @@ export default function App() {
       <Toaster position="top-center" />
       <ReactionOverlay />
 
-      {/* Clock Out Modal */}
+      {/* Feedback + Clock Out Modal */}
       {showClockOut && (
-        <ClockOutModal
+        <FeedbackModal
           duration={formatDuration(sessionMs)}
+          userId={dbUser?.id ?? null}
           onConfirm={handleClockOut}
           onCancel={() => setShowClockOut(false)}
         />
@@ -659,16 +653,58 @@ export default function App() {
               )}
             </div>
 
-            {/* Chat Panel — "Slack" */}
-            {showChat && (
-              <ChatPanel send={send} roomId={currentRoomId} onToggleEmoji={toggleEmojiPanel} />
-            )}
+            {/* Right Panel — Chat / Friends / AI tabs */}
+            {(showChat || showAIPanel) && (
+              <div style={{
+                width: 300, flexShrink: 0, borderLeft: '1px solid rgba(245,158,11,0.1)',
+                background: 'rgba(8,12,22,0.85)', display: 'flex', flexDirection: 'column',
+              }} className="desktop-only">
+                {/* Tab bar */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                  {[
+                    { key: 'chat', label: '💬 Chat' },
+                    { key: 'friends', label: '👥 Colleagues' },
+                    { key: 'ai', label: '🤖 AI' },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveRightTab(tab.key as any)}
+                      style={{
+                        flex: 1, padding: '10px 4px', background: 'transparent', border: 'none',
+                        cursor: 'pointer', fontSize: '11px', fontWeight: activeRightTab === tab.key ? 700 : 500,
+                        color: activeRightTab === tab.key ? 'var(--accent)' : 'var(--text-muted)',
+                        borderBottom: activeRightTab === tab.key ? '2px solid var(--accent)' : '2px solid transparent',
+                        transition: 'all 0.15s', fontFamily: 'var(--font-base)',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-            {/* AI Colleague Panel */}
-            {showAIPanel && (
-              <AvatarChat roomId={currentRoomId} />
+                {/* Tab content */}
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {activeRightTab === 'chat' && (
+                    <ChatPanel send={send} roomId={currentRoomId} onToggleEmoji={toggleEmojiPanel} />
+                  )}
+                  {activeRightTab === 'friends' && (
+                    <FriendsPanel
+                      myDbUserId={dbUser?.id ?? null}
+                      currentOnlineIds={Object.keys(users)}
+                      onPingUser={(userId, name) => {
+                        inviteUser(userId)
+                        toast.success(`📨 Ping sent to ${name}!`)
+                      }}
+                    />
+                  )}
+                  {activeRightTab === 'ai' && (
+                    <AvatarChat roomId={currentRoomId} />
+                  )}
+                </div>
+              </div>
             )}
           </div>
+
         </div>
       </div>
 
