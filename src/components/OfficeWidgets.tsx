@@ -8,41 +8,132 @@ const QUOTES = [
     { text: "Opportunities don't happen, you create them.", author: "Chris Grosser" },
     { text: "A meeting is an event where people talk about things they should do while doing nothing.", author: "Office Wisdom" },
     { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
-    { text: "If you think you are too small to make a difference, try sleeping with a mosquito.", author: "Dalai Lama" },
-    { text: "Eat a live frog every morning and nothing worse will happen to you the rest of the day.", author: "Mark Twain" },
-    { text: "There is no substitute for hard work.", author: "Thomas Edison" },
     { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+    { text: "There is no substitute for hard work.", author: "Thomas Edison" },
 ]
 
-// ── Office ticker messages that scroll across the top ─────────────────────
-const TICKER_MSGS = [
-    "☕ Coffee machine is restocked — today's mood: Espresso",
-    "📢 All-hands meeting postponed indefinitely (as expected)",
-    "🎉 Sarah just hit 100 messages — Employee of the Hour!",
-    "💡 Pro tip: Turning it off and on again solves 80% of problems",
-    "📊 Q1 Vibes Report: Team morale UP 42% since adding virtual office",
-    "🏆 \"Bug-free code\" spotted in the wild — scientists baffled",
-    "📅 Reminder: Stand-up in 5 mins! Or continue sitting, we don't judge",
-    "🎵 Current office vibe: Deep Focus Mode ON",
-    "☀️ Work-from-home forecast: 100% chance of staying in pajamas",
-    "💪 Shipping is just complaining in production. Stay bold.",
+// ── Work Tips by domain ───────────────────────────────────────────────────
+const WORK_TIPS: { domain: string; icon: string; color: string; tips: string[] }[] = [
+    {
+        domain: 'SDE', icon: '💻', color: '#6366f1',
+        tips: [
+            'Write code for the next developer, not just the machine.',
+            'A failing test is better than a missing test.',
+            'Prefer composition over inheritance.',
+            'Name variables by what they mean, not what they are.',
+            'Commit small, push often — easier to review & revert.',
+            'The fastest code is the code that doesn\'t run.',
+            'Debug by adding assertions, not just print statements.',
+        ]
+    },
+    {
+        domain: 'Gen AI', icon: '🤖', color: '#8b5cf6',
+        tips: [
+            'Chain-of-thought prompting improves reasoning accuracy significantly.',
+            'RAG (Retrieval-Augmented Generation) beats fine-tuning for fresh data.',
+            'Always measure your LLM latency — stream when possible.',
+            'Use temperature 0 for deterministic outputs in prod.',
+            'Embeddings near in vector space are semantically related.',
+            'System prompts are more powerful than user prompts for tone control.',
+            'Few-shot examples in prompts beat long instructions.',
+        ]
+    },
+    {
+        domain: 'Data', icon: '📊', color: '#f59e0b',
+        tips: [
+            'Plot your data before modeling — surprises live in distributions.',
+            'Feature engineering beats algorithm selection 80% of the time.',
+            'Validation leakage is the #1 silent killer of ML projects.',
+            'Use median over mean for skewed distributions.',
+            'Always version your datasets like you version your code.',
+            'A confusion matrix tells a richer story than accuracy alone.',
+            'Data quality > model complexity. Always.',
+        ]
+    },
+    {
+        domain: 'Product', icon: '🎯', color: '#10b981',
+        tips: [
+            'Ship to 5% of users before shipping to 100%.',
+            'Talk to users before building. Then again after.',
+            'P0 bugs are the ones the CEO reports on Monday morning.',
+            'A good spec prevents 10 rounds of code review.',
+            'Kill features that don\'t move the needle. Be ruthless.',
+            'Net Promoter Score is a lagging indicator. Watch retention.',
+            'Velocity without direction is just noise.',
+        ]
+    },
+    {
+        domain: 'DevOps', icon: '⚙️', color: '#06b6d4',
+        tips: [
+            'Infrastructure as Code prevents "works on my machine".',
+            'Monitor latency percentiles (p95, p99) not just averages.',
+            'A rollback plan is as important as the deployment plan.',
+            'Canary releases: ship to 1% first, check metrics, then proceed.',
+            'Set alerts on error rates, not just uptime.',
+            'Immutable infrastructure beats mutation-in-place.',
+            'On-call without runbooks is just chaos with a pager.',
+        ]
+    },
 ]
 
-// ── Office Ticker ─────────────────────────────────────────────────────────
-export function OfficeTicker() {
-    // Duplicate messages for seamless loop
-    const msgs = [...TICKER_MSGS, ...TICKER_MSGS]
+// ── Work Tips Ticker (replaces OfficeTicker) ──────────────────────────────
+export function WorkTipsTicker() {
+    const [domainIdx, setDomainIdx] = useState(0)
+    const [tipIdx, setTipIdx] = useState(0)
+    const [fade, setFade] = useState(true)
+
+    const domain = WORK_TIPS[domainIdx]
+    const tip = domain.tips[tipIdx]
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            setFade(false)
+            setTimeout(() => {
+                setTipIdx(t => {
+                    const next = (t + 1) % domain.tips.length
+                    if (next === 0) setDomainIdx(d => (d + 1) % WORK_TIPS.length)
+                    return next
+                })
+                setFade(true)
+            }, 350)
+        }, 8000)
+        return () => clearInterval(id)
+    }, [domain])
+
     return (
-        <div className="office-ticker">
-            <div className="ticker-label">
-                <span>📢</span> LIVE
+        <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '6px 14px',
+            background: `${domain.color}10`,
+            borderBottom: `1px solid ${domain.color}22`,
+            fontSize: '12px',
+            minHeight: 34,
+        }}>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0,
+                padding: '2px 8px', borderRadius: 99,
+                background: `${domain.color}20`, border: `1px solid ${domain.color}40`,
+                color: domain.color, fontWeight: 700, fontSize: '11px',
+            }}>
+                {domain.icon} {domain.domain}
             </div>
-            <div className="ticker-scroll">
-                <div className="ticker-inner">
-                    {msgs.map((msg, i) => (
-                        <span key={i} className="ticker-item">{msg}</span>
-                    ))}
-                </div>
+            <div style={{
+                color: 'var(--text-secondary)', flex: 1, overflow: 'hidden',
+                whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                opacity: fade ? 1 : 0, transition: 'opacity 0.35s ease',
+            }}>
+                💡 {tip}
+            </div>
+            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                {WORK_TIPS.map((d, i) => (
+                    <div key={i} onClick={() => { setDomainIdx(i); setTipIdx(0) }}
+                        title={d.domain}
+                        style={{
+                            width: 6, height: 6, borderRadius: '50%', cursor: 'pointer',
+                            background: i === domainIdx ? domain.color : 'var(--border-strong)',
+                            transition: 'background 0.2s',
+                        }} />
+                ))}
             </div>
         </div>
     )
@@ -70,7 +161,6 @@ export function PomodoroWidget() {
                     if (s <= 1) {
                         clearInterval(intervalRef.current!)
                         setRunning(false)
-                        // Switch mode
                         setIsWork(w => !w)
                         setSecsLeft(isWork ? BREAK_MINS * 60 : WORK_MINS * 60)
                         return 0
@@ -109,7 +199,7 @@ export function PomodoroWidget() {
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                         {running ? 'Click to pause' : 'Click to start'}
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px' }}>
                         <span style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={(e) => { e.stopPropagation(); reset() }}>
                             ↩ Reset
                         </span>
@@ -122,7 +212,6 @@ export function PomodoroWidget() {
 
 // ── Daily Office Quote ────────────────────────────────────────────────────
 export function DailyQuote() {
-    // Pick a quote based on the day of year so it changes daily
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
     const quote = QUOTES[dayOfYear % QUOTES.length]
 
@@ -141,17 +230,23 @@ export function DailyQuote() {
     )
 }
 
-// ── Office Vibe selector ──────────────────────────────────────────────────
+// ── Office Vibe selector — with external state so App can show it ─────────
 const VIBES = [
     { id: 'productive', label: '⚡ Productive', cls: 'vibe-productive' },
     { id: 'deep-work', label: '🔵 Deep Work', cls: 'vibe-deep-work' },
     { id: 'chill', label: '🌊 Chill Mode', cls: 'vibe-chill' },
     { id: 'standup', label: '📣 On a Call', cls: 'vibe-standup' },
+    { id: 'brb', label: '🍵 BRB', cls: 'vibe-chill' },
+    { id: 'reviewing', label: '🔍 Reviewing', cls: 'vibe-deep-work' },
 ]
 
-export function OfficeVibe() {
-    const [vibe, setVibe] = useState('productive')
-    const current = VIBES.find(v => v.id === vibe)!
+interface OfficeVibeProps {
+    vibe: string
+    onChange: (v: string) => void
+}
+
+export function OfficeVibe({ vibe, onChange }: OfficeVibeProps) {
+    const current = VIBES.find(v => v.id === vibe) ?? VIBES[0]
     const [open, setOpen] = useState(false)
 
     return (
@@ -166,25 +261,17 @@ export function OfficeVibe() {
             </div>
             {open && (
                 <div style={{
-                    position: 'absolute',
-                    top: '110%',
-                    left: 0,
-                    background: 'var(--bg-panel)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    zIndex: 100,
-                    minWidth: 150,
-                    boxShadow: 'var(--shadow-md)',
+                    position: 'absolute', top: '110%', left: 0,
+                    background: 'var(--bg-panel)', border: '1px solid var(--border-strong)',
+                    borderRadius: 12, overflow: 'hidden', zIndex: 200,
+                    minWidth: 160, boxShadow: 'var(--shadow-md)',
                 }}>
                     {VIBES.map(v => (
                         <div
                             key={v.id}
-                            onClick={() => { setVibe(v.id); setOpen(false) }}
+                            onClick={() => { onChange(v.id); setOpen(false) }}
                             style={{
-                                padding: '9px 14px',
-                                fontSize: '12px',
-                                fontWeight: 600,
+                                padding: '9px 14px', fontSize: '12px', fontWeight: 600,
                                 cursor: 'pointer',
                                 color: vibe === v.id ? 'var(--accent)' : 'var(--text-secondary)',
                                 background: vibe === v.id ? 'rgba(245,158,11,0.07)' : 'transparent',
@@ -202,10 +289,11 @@ export function OfficeVibe() {
     )
 }
 
-// ── Productivity Score meter ──────────────────────────────────────────────
+// ── Productivity Score meter (score derived externally) ────────────────────
 export function ProductivityMeter({ score }: { score: number }) {
-    const label = score >= 80 ? '🚀 On Fire!' : score >= 60 ? '⚡ Crushing It' : score >= 40 ? '💪 Getting There' : '☕ Warming Up'
-    const color = score >= 80 ? 'var(--emerald)' : score >= 60 ? 'var(--accent)' : score >= 40 ? 'var(--blue)' : 'var(--text-muted)'
+    const clamped = Math.min(100, Math.max(0, Math.round(score)))
+    const label = clamped >= 80 ? '🚀 On Fire!' : clamped >= 60 ? '⚡ Crushing It' : clamped >= 40 ? '💪 Getting There' : '☕ Warming Up'
+    const color = clamped >= 80 ? 'var(--emerald)' : clamped >= 60 ? 'var(--accent)' : clamped >= 40 ? 'var(--blue)' : 'var(--text-muted)'
 
     return (
         <div className="productivity-meter">
@@ -219,11 +307,11 @@ export function ProductivityMeter({ score }: { score: number }) {
                     </div>
                 </div>
                 <div style={{ fontSize: '22px', fontWeight: 800, fontFamily: 'var(--font-display)', color }}>
-                    {score}<span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>/100</span>
+                    {clamped}<span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>/100</span>
                 </div>
             </div>
             <div className="meter-bar-track">
-                <div className="meter-bar-fill" style={{ width: `${score}%` }} />
+                <div className="meter-bar-fill" style={{ width: `${clamped}%`, transition: 'width 0.5s ease' }} />
             </div>
         </div>
     )

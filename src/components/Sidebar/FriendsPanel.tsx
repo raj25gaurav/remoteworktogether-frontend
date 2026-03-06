@@ -13,9 +13,17 @@ interface FriendUser {
     last_seen?: number
 }
 
+interface PendingRequest {
+    id: string
+    from_id: string
+    to_id: string
+    status: string
+    rwt_users?: { display_name: string; avatar: string; profession: string }
+}
+
 interface FriendsPanelProps {
     myDbUserId: string | null
-    currentOnlineIds: string[] // in-session WS user ids — from useStore users
+    currentOnlineIds: string[]
     onPingUser?: (userId: string, displayName: string) => void
 }
 
@@ -43,184 +51,279 @@ function SimilarityBadge({ score }: { score: number }) {
 }
 
 export default function FriendsPanel({ myDbUserId, currentOnlineIds, onPingUser }: FriendsPanelProps) {
-    const [users, setUsers] = useState<FriendUser[]>([])
+    const [suggestions, setSuggestions] = useState<FriendUser[]>([])
+    const [friends, setFriends] = useState<FriendUser[]>([])
+    const [pending, setPending] = useState<PendingRequest[]>([])
+    const [sentRequests, setSentRequests] = useState<Set<string>>(new Set())
     const [loading, setLoading] = useState(true)
-    const [filter, setFilter] = useState<'all' | 'online' | 'similar'>('all')
+    const [tab, setTab] = useState<'friends' | 'discover' | 'requests'>('friends')
     const [search, setSearch] = useState('')
 
-    const fetchFriends = async () => {
-        if (!myDbUserId) {
-            setLoading(false)
-            return
-        }
+    const fetchAll = async () => {
+        if (!myDbUserId) { setLoading(false); return }
+        const onlineParam = currentOnlineIds.join(',')
         try {
-            const onlineParam = currentOnlineIds.join(',')
-            const res = await fetch(`${API_URL}/api/friends/suggest/${myDbUserId}?online_ids=${onlineParam}`)
-            const data = await res.json()
-            setUsers(data.suggestions || [])
-        } catch {
-            // silently fail
-        } finally {
-            setLoading(false)
-        }
+            const [sugRes, frRes, pendRes] = await Promise.all([
+                fetch(`${API_URL}/api/friends/suggest/${myDbUserId}?online_ids=${onlineParam}`),
+                fetch(`${API_URL}/api/friends/list/${myDbUserId}?online_ids=${onlineParam}`),
+                fetch(`${API_URL}/api/friends/pending/${myDbUserId}`),
+            ])
+            const [sugData, frData, pendData] = await Promise.all([sugRes.json(), frRes.json(), pendRes.json()])
+            setSuggestions(sugData.suggestions || [])
+            setFriends(frData.friends || [])
+            setPending(pendData.requests || [])
+        } catch { }
+        finally { setLoading(false) }
     }
 
     useEffect(() => {
-        fetchFriends()
-        // Refresh every 30 seconds
-        const id = setInterval(fetchFriends, 30000)
+        fetchAll()
+        const id = setInterval(fetchAll, 30000)
         return () => clearInterval(id)
     }, [myDbUserId])
 
-    const filtered = users.filter(u => {
-        if (filter === 'online' && !u.is_online) return false
-        if (filter === 'similar' && (u.similarity ?? 0) < 40) return false
-        if (search && !u.display_name.toLowerCase().includes(search.toLowerCase()) &&
-            !u.username.toLowerCase().includes(search.toLowerCase()) &&
-            !u.profession?.toLowerCase().includes(search.toLowerCase())) return false
-        return true
-    })
+    const sendRequest = async (toId: string) => {
+        if (!myDbUserId) return
+        setSentRequests(prev => new Set([...prev, toId]))
+        await fetch(`${API_URL}/api/friends/request`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from_id: myDbUserId, to_id: toId }),
+        }).catch(() => { })
+    }
 
-    const onlineCount = users.filter(u => u.is_online).length
+    const respond = async (requestId: string, accept: boolean) => {
+        if (!myDbUserId) return
+        await fetch(`${API_URL}/api/friends/respond`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ request_id: requestId, responder_id: myDbUserId, accept }),
+        }).catch(() => { })
+        fetchAll()
+    }
 
     if (!myDbUserId) {
         return (
             <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '8px' }}>👥</div>
-                Sign in with an account to see colleagues and matches!
+                Sign in to see colleagues and friends!
             </div>
         )
     }
 
+    const onlineCount = friends.filter(u => u.is_online).length
+    const filteredSuggestions = suggestions.filter(u =>
+        !search || u.display_name.toLowerCase().includes(search.toLowerCase()) ||
+        u.profession?.toLowerCase().includes(search.toLowerCase())
+    )
+    const friendIds = new Set(friends.map(f => f.id))
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            {/* Header */}
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '13px' }}>👥 Colleagues</div>
-                    <div style={{
-                        fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '99px',
-                        background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981',
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0, padding: '0 8px' }}>
+                {[
+                    { key: 'friends', label: `👥 Friends${friends.length > 0 ? ` (${friends.length})` : ''}` },
+                    { key: 'discover', label: '🔍 Discover' },
+                    { key: 'requests', label: `📬${pending.length > 0 ? ` (${pending.length})` : ''}` },
+                ].map(t => (
+                    <button key={t.key} onClick={() => setTab(t.key as any)} style={{
+                        flex: 1, padding: '9px 4px', background: 'transparent', border: 'none',
+                        borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+                        cursor: 'pointer', fontSize: '11px', fontWeight: tab === t.key ? 700 : 500,
+                        color: tab === t.key ? 'var(--accent)' : 'var(--text-muted)',
+                        transition: 'all 0.15s', fontFamily: 'var(--font-base)',
                     }}>
-                        {onlineCount} online
-                    </div>
-                </div>
-
-                {/* Search */}
-                <input
-                    className="input"
-                    placeholder="🔍 Search colleagues..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    style={{ fontSize: '12px', padding: '7px 12px', marginBottom: '8px' }}
-                />
-
-                {/* Filter tabs */}
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    {(['all', 'online', 'similar'] as const).map(f => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-ghost'}`}
-                            style={{ flex: 1, fontSize: '11px', padding: '4px 0', textTransform: 'capitalize' }}
-                        >
-                            {f === 'all' ? `All (${users.length})` : f === 'online' ? `🟢 ${onlineCount}` : '💛 Similar'}
-                        </button>
-                    ))}
-                </div>
+                        {t.label}
+                    </button>
+                ))}
             </div>
 
-            {/* List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-                {loading ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        <div className="spinner" style={{ margin: '0 auto 12px' }} />
-                        Loading colleagues...
-                    </div>
-                ) : filtered.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🔍</div>
-                        {search ? 'No one matched your search' : filter === 'online' ? 'Nobody else is online right now' : 'No similar colleagues yet!'}
-                    </div>
-                ) : (
-                    filtered.map(user => (
-                        <div
-                            key={user.id}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 10px', borderRadius: '12px', marginBottom: '4px',
-                                background: 'transparent', border: '1px solid transparent',
-                                transition: 'all 0.2s', cursor: 'default',
-                            }}
-                            onMouseEnter={e => {
-                                (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-hover)'
-                                    ; (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'
-                            }}
-                            onMouseLeave={e => {
-                                (e.currentTarget as HTMLDivElement).style.background = 'transparent'
-                                    ; (e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'
-                            }}
-                        >
-                            {/* Avatar + online dot */}
-                            <div style={{ position: 'relative', flexShrink: 0 }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: '50%', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem',
-                                    background: 'var(--bg-card)', border: '1px solid var(--border)',
-                                }}>
-                                    {AVATAR_MAP[user.avatar as keyof typeof AVATAR_MAP] || '👤'}
-                                </div>
-                                <div style={{
-                                    position: 'absolute', bottom: 1, right: 1, width: 10, height: 10,
-                                    background: user.is_online ? '#10b981' : '#4d607a',
-                                    borderRadius: '50%', border: '2px solid var(--bg-panel)',
-                                }} />
-                            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
 
-                            {/* Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '12px', color: 'var(--text-primary)' }}>
-                                        {user.display_name}
-                                    </span>
-                                    {user.is_online && (
-                                        <div style={{ width: 5, height: 5, background: '#10b981', borderRadius: '50%', animation: 'status-dot 2s infinite' }} />
-                                    )}
-                                </div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {user.profession || 'Remote Worker'}
-                                    {user.last_seen && !user.is_online && (
-                                        <span style={{ marginLeft: '4px' }}>· {timeSince(user.last_seen)}</span>
-                                    )}
-                                </div>
-                                {user.similarity !== undefined && user.similarity > 0 && (
-                                    <div style={{ marginTop: '4px' }}>
-                                        <SimilarityBadge score={user.similarity} />
+                {/* ── FRIENDS TAB ── */}
+                {tab === 'friends' && (
+                    <div style={{ padding: '12px 10px' }}>
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                <div className="spinner" style={{ margin: '0 auto 12px' }} />Loading...
+                            </div>
+                        ) : friends.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🤝</div>
+                                <div style={{ fontWeight: 600, marginBottom: '6px' }}>No friends yet!</div>
+                                <div style={{ fontSize: '12px' }}>Go to <strong>Discover</strong> to send friend requests.</div>
+                            </div>
+                        ) : (
+                            <>
+                                {onlineCount > 0 && (
+                                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', padding: '0 4px' }}>
+                                        🟢 Online ({onlineCount})
                                     </div>
                                 )}
-                            </div>
+                                {friends.filter(u => u.is_online).map(user => <UserRow key={user.id} user={user} onPing={onPingUser} isFriend />)}
+                                {friends.some(u => !u.is_online) && (
+                                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px', textTransform: 'uppercase', margin: '12px 4px 8px' }}>
+                                        ⚫ Offline
+                                    </div>
+                                )}
+                                {friends.filter(u => !u.is_online).map(user => <UserRow key={user.id} user={user} isFriend />)}
+                            </>
+                        )}
+                    </div>
+                )}
 
-                            {/* Action */}
-                            {user.is_online && onPingUser && (
-                                <button
-                                    className="btn btn-sm btn-ghost"
-                                    style={{ fontSize: '11px', padding: '4px 8px', flexShrink: 0 }}
-                                    onClick={() => onPingUser(user.id, user.display_name)}
-                                    title={`Ping ${user.display_name}`}
-                                >
-                                    📨
-                                </button>
+                {/* ── DISCOVER TAB ── */}
+                {tab === 'discover' && (
+                    <div>
+                        <div style={{ padding: '10px 10px 4px' }}>
+                            <input className="input" placeholder="🔍 Search by name or profession..."
+                                value={search} onChange={e => setSearch(e.target.value)}
+                                style={{ fontSize: '12px', padding: '7px 12px' }} />
+                        </div>
+                        <div style={{ padding: '4px 10px' }}>
+                            {loading ? (
+                                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                    <div className="spinner" style={{ margin: '0 auto 12px' }} />
+                                </div>
+                            ) : filteredSuggestions.filter(u => !friendIds.has(u.id)).length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                    🔍 No results
+                                </div>
+                            ) : (
+                                filteredSuggestions.filter(u => !friendIds.has(u.id)).map(user => (
+                                    <UserRow key={user.id} user={user}
+                                        action={
+                                            sentRequests.has(user.id) ? (
+                                                <span style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 8px' }}>⏳ Sent</span>
+                                            ) : (
+                                                <button className="btn btn-sm btn-primary"
+                                                    style={{ fontSize: '10px', padding: '4px 8px' }}
+                                                    onClick={() => sendRequest(user.id)}>
+                                                    ➕ Add
+                                                </button>
+                                            )
+                                        }
+                                    />
+                                ))
                             )}
                         </div>
-                    ))
+                    </div>
+                )}
+
+                {/* ── REQUESTS TAB ── */}
+                {tab === 'requests' && (
+                    <div style={{ padding: '12px 10px' }}>
+                        {pending.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📬</div>
+                                No pending friend requests
+                            </div>
+                        ) : (
+                            pending.map(req => {
+                                const sender = req.rwt_users
+                                return (
+                                    <div key={req.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                        padding: '10px', borderRadius: 12, marginBottom: '6px',
+                                        background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
+                                    }}>
+                                        <div style={{
+                                            width: 36, height: 36, borderRadius: '50%',
+                                            background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem',
+                                        }}>
+                                            {AVATAR_MAP[sender?.avatar as keyof typeof AVATAR_MAP] || '👤'}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 700, fontSize: '12px' }}>
+                                                {sender?.display_name || 'Someone'}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                {sender?.profession || 'Remote worker'} • wants to connect
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                            <button className="btn btn-sm btn-primary"
+                                                style={{ fontSize: '10px', padding: '4px 8px' }}
+                                                onClick={() => respond(req.id, true)}>
+                                                ✓
+                                            </button>
+                                            <button className="btn btn-sm btn-ghost"
+                                                style={{ fontSize: '10px', padding: '4px 8px' }}
+                                                onClick={() => respond(req.id, false)}>
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* Footer refresh */}
-            <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-                <button className="btn btn-ghost btn-sm" onClick={fetchFriends} style={{ width: '100%', fontSize: '11px', color: 'var(--text-muted)' }}>
+            {/* Footer */}
+            <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                <button className="btn btn-ghost btn-sm" onClick={fetchAll} style={{ width: '100%', fontSize: '11px', color: 'var(--text-muted)' }}>
                     🔄 Refresh
                 </button>
+            </div>
+        </div>
+    )
+}
+
+// ── Shared row component ──────────────────────────────────────────────────────
+function UserRow({ user, action, onPing, isFriend }: {
+    user: FriendUser
+    action?: React.ReactNode
+    onPing?: (id: string, name: string) => void
+    isFriend?: boolean
+}) {
+    return (
+        <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '8px 6px', borderRadius: 10, marginBottom: '2px',
+            transition: 'background 0.15s', cursor: 'default',
+        }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: 'var(--bg-card)', border: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem',
+                }}>
+                    {AVATAR_MAP[user.avatar as keyof typeof AVATAR_MAP] || '👤'}
+                </div>
+                <div style={{
+                    position: 'absolute', bottom: 0, right: 0, width: 9, height: 9,
+                    background: user.is_online ? '#10b981' : '#4d607a',
+                    borderRadius: '50%', border: '2px solid var(--bg-panel)',
+                }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {user.display_name}
+                    {isFriend && <span style={{ fontSize: '9px', color: '#10b981' }}>✓ friend</span>}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.profession || 'Remote worker'}
+                    {user.last_seen && !user.is_online && <span> · {timeSince(user.last_seen)}</span>}
+                </div>
+                {user.similarity !== undefined && user.similarity > 0 && (
+                    <div style={{ marginTop: '3px' }}><SimilarityBadge score={user.similarity} /></div>
+                )}
+            </div>
+            <div style={{ flexShrink: 0, display: 'flex', gap: '4px' }}>
+                {action}
+                {isFriend && user.is_online && onPing && (
+                    <button className="btn btn-sm btn-ghost"
+                        style={{ fontSize: '11px', padding: '4px 8px' }}
+                        onClick={() => onPing(user.id, user.display_name)}
+                        title={`Ping ${user.display_name}`}>
+                        📨
+                    </button>
+                )}
             </div>
         </div>
     )

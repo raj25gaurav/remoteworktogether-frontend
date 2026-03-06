@@ -12,7 +12,8 @@ import EmojiPanel from './components/EmojiPanel/EmojiPanel'
 import AvatarChat from './components/AvatarChat/AvatarChat'
 import ReactionOverlay from './components/ReactionOverlay/ReactionOverlay'
 import FeedbackModal from './components/FeedbackModal'
-import { OfficeTicker, PomodoroWidget, DailyQuote, ProductivityMeter, OfficeVibe } from './components/OfficeWidgets'
+import { WorkTipsTicker, PomodoroWidget, DailyQuote, ProductivityMeter, OfficeVibe } from './components/OfficeWidgets'
+import CabinGames from './components/Games/CabinGames'
 import { Toaster, toast } from 'react-hot-toast'
 import { AMBIENT_SOUNDS, AVATAR_MAP, API_URL } from './utils/constants'
 import { VIEW_MODE, MESSAGE_TYPE, ROOM_ID, WS_MESSAGE_TYPE, type ViewMode, type TabType } from './types/enums'
@@ -59,9 +60,11 @@ export default function App() {
   const [videoEnabled, setVideoEnabled] = useState(false)
   const [showClockOut, setShowClockOut] = useState(false)
   const [sessionMs, setSessionMs] = useState(0)
-  const [productivityScore, setProductivityScore] = useState(42)
+  const [productivityScore, setProductivityScore] = useState(20)
   const [activeRightTab, setActiveRightTab] = useState<'chat' | 'friends' | 'ai'>('chat')
   const [activeDbSessionId, setActiveDbSessionId] = useState<string | null>(null)
+  const [currentVibe, setCurrentVibe] = useState('productive')
+  const [showGames, setShowGames] = useState(false)
   const ambientRef = useRef<HTMLAudioElement | null>(null)
 
   // ── Session Timer ─────────────────────────────────────────────────────────
@@ -96,6 +99,15 @@ export default function App() {
       }
     }
   }, [myUser, dbUser])
+
+  // ── Fetch real productivity score ─────────────────────────────────────────
+  useEffect(() => {
+    if (!dbUser) return
+    fetch(`${API_URL}/api/score/${dbUser.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.score !== undefined) setProductivityScore(d.score) })
+      .catch(() => { })
+  }, [dbUser])
 
   // ── WebSocket ─────────────────────────────────────────────────────────────
   const { send } = useWebSocket(myUser?.id ?? null)
@@ -329,8 +341,8 @@ export default function App() {
 
         {/* Main Content */}
         <div className="main-content">
-          {/* ── Office Ticker (always visible) ────────────────────────── */}
-          <OfficeTicker />
+          {/* ── Work Tips Bar (always visible) ───────────────────────── */}
+          <WorkTipsTicker />
 
           {/* ── Top Bar ───────────────────────────────────────────────────── */}
           <div className="topbar">
@@ -369,7 +381,7 @@ export default function App() {
             </div>
 
             {/* Office vibe chip */}
-            <OfficeVibe />
+            <OfficeVibe vibe={currentVibe} onChange={setCurrentVibe} />
 
             {/* ON AIR badge when in meeting with video */}
             {isInCabin && videoEnabled && (
@@ -702,6 +714,10 @@ export default function App() {
                   )}
                 </div>
               </div>
+            )}
+            {/* Cabin Games panel */}
+            {isInCabin && (
+              <CabinGames enabled={showGames} onToggle={() => setShowGames(g => !g)} />
             )}
           </div>
 
