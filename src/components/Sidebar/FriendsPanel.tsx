@@ -13,6 +13,7 @@ interface FriendUser {
     similarity?: number
     is_online: boolean
     last_seen?: number
+    status?: string
 }
 
 interface PendingRequest {
@@ -94,7 +95,7 @@ export default function FriendsPanel({ myDbUserId, currentOnlineIds, onPingUser 
         fetchAll()
         const id = setInterval(fetchAll, 10000)
         return () => clearInterval(id)
-    }, [myDbUserId])
+    }, [myDbUserId, fetchAll])
 
     // ── Friend request actions ────────────────────────────────────────────────
     const sendRequest = async (toId: string) => {
@@ -392,6 +393,7 @@ function SuggestRow({ user, sent, onSend }: {
     sent: boolean
     onSend: () => void
 }) {
+    const isPending = sent || user.status === 'pending'
     return (
         <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
@@ -427,8 +429,10 @@ function SuggestRow({ user, sent, onSend }: {
                 )}
             </div>
             <div style={{ flexShrink: 0 }}>
-                {sent ? (
+                {isPending ? (
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', padding: '4px 8px' }}>⏳ Sent</span>
+                ) : user.status === 'accepted' ? (
+                    <span style={{ fontSize: '10px', color: '#10b981', padding: '4px 8px' }}>✓ Friend</span>
                 ) : (
                     <button className="btn btn-sm btn-primary"
                         style={{ fontSize: '10px', padding: '4px 10px' }}
