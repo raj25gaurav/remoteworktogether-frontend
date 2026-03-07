@@ -108,7 +108,12 @@ export default function FriendsPanel({ myDbUserId, currentOnlineIds, onPingUser 
             })
             const data = await res.json()
             if (!data.ok && data.detail) {
-                // Already sent or friends - still keep "Sent" state
+                if (data.detail.includes("friends") || data.detail.includes("sent")) {
+                    // Already sent or friends - keep "Sent" state
+                } else {
+                    import('react-hot-toast').then(({ toast }) => toast.error(data.detail))
+                    setSentRequests(prev => { const n = new Set(prev); n.delete(toId); return n; })
+                }
             }
         } catch { }
     }
