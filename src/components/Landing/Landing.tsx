@@ -160,7 +160,7 @@ export default function Landing() {
     const _clockIn = async (dbUser: any) => {
         try {
             const res = await fetch(
-                `${API_URL}/api/join?username=${encodeURIComponent(dbUser.display_name)}&avatar=${dbUser.avatar}`
+                `${API_URL}/api/join?username=${encodeURIComponent(dbUser.display_name)}&avatar=${dbUser.avatar}&db_user_id=${dbUser.id}`
             )
             const data = await res.json()
             if (data.user) {

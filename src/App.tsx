@@ -708,22 +708,28 @@ export default function App() {
 
                 {/* Tab content */}
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                  {activeRightTab === 'chat' && (
+                  <div style={{ display: activeRightTab === 'chat' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
                     <ChatPanel send={send} roomId={currentRoomId} onToggleEmoji={toggleEmojiPanel} />
-                  )}
-                  {activeRightTab === 'friends' && (
+                  </div>
+                  <div style={{ display: activeRightTab === 'friends' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
                     <FriendsPanel
                       myDbUserId={dbUser?.id ?? null}
-                      currentOnlineIds={Object.keys(users)}
-                      onPingUser={(userId, name) => {
-                        inviteUser(userId)
-                        toast.success(`📨 Ping sent to ${name}!`)
+                      currentOnlineIds={Object.values(users).map(u => u.db_user_id).filter(Boolean) as string[]}
+                      onPingUser={(dbUserId, name) => {
+                        const wsUser = Object.values(users).find(u => u.db_user_id === dbUserId)
+                        if (wsUser) {
+                          // we pass the ephemeral socket ID for the actual signaling
+                          inviteUser(wsUser.id)
+                          toast.success(`📨 Ping sent to ${name}!`)
+                        } else {
+                          toast.error(`${name} is not online right now.`)
+                        }
                       }}
                     />
-                  )}
-                  {activeRightTab === 'ai' && (
+                  </div>
+                  <div style={{ display: activeRightTab === 'ai' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
                     <AvatarChat roomId={currentRoomId} />
-                  )}
+                  </div>
                 </div>
               </div>
             )}

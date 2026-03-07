@@ -9,6 +9,7 @@ export interface User {
     is_muted: boolean
     is_camera_off: boolean
     color: string
+    db_user_id?: string
 }
 
 export interface Room {
