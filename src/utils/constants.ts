@@ -1,6 +1,8 @@
 // In production (Vercel), set VITE_BACKEND_URL to your Railway URL
 // e.g. https://remoteworktogether-backend.up.railway.app
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+let bUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+if (bUrl.endsWith('/')) bUrl = bUrl.slice(0, -1)
+const BACKEND_URL = bUrl
 
 // Automatically use wss:// for https:// backends (required for production)
 export const WS_URL = BACKEND_URL
